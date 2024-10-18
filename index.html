@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P 02</title>
+    <title>P2P 03</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.3.1/dist/jsQR.js"></script>
     <style>
@@ -156,7 +156,10 @@
         function cleanSDP(sdp) {
             // Remove linhas não suportadas do SDP
             return sdp.split('\n').filter(line => {
-                return !line.includes('a=max-message-size') && !line.includes('a=sctp-port') && !line.includes('a=mid:');
+                return !line.includes('a=max-message-size') && 
+                       !line.includes('a=sctp-port') && 
+                       !line.includes('a=mid:') &&
+                       !line.includes('a=setup:actpass'); // Remove a linha inválida
             }).join('\n');
         }
 
