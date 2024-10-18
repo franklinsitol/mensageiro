@@ -5,127 +5,309 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat WebRTC</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        #messages { max-height: 300px; overflow-y: auto; }
-        .message { border: 1px solid #ddd; margin: 5px; padding: 10px; border-radius: 5px; }
-        #message-input { width: calc(100% - 60px); }
-        textarea { width: 100%; height: 80px; }
+        body { 
+            font-family: Arial, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #f0f0f0; 
+        }
+        #chat-container { 
+            width: 90%; 
+            max-width: 600px; 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        #messages { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            max-height: 400px; 
+        }
+        .message { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            background: #e0e0e0; 
+        }
+        .my-message { 
+            background: #0084ff; 
+            color: white; 
+        }
+        #input-container { 
+            display: flex; 
+            border-top: 1px solid #ddd; 
+        }
+        #message-input { 
+            flex: 1; 
+            padding: 10px; 
+            border: none; 
+            outline: none; 
+        }
+        #send-button { 
+            padding: 10px; 
+            background: #0084ff; 
+            border: none; 
+            color: white; 
+            cursor: pointer; 
+            border-radius: 0 0 10px 0; 
+        }
+        .floating-button { 
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            background: #0084ff; 
+            color: white; 
+            border: none; 
+            border-radius: 50%; 
+            width: 50px; 
+            height: 50px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            cursor: pointer; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+        }
+        .hidden { display: none; }
+        #contacts-modal { 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: white; 
+            padding: 20px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+            border-radius: 10px; 
+            display: none; 
+        }
+        #contacts-modal.active { display: block; }
+        #contacts-list { 
+            max-height: 150px; 
+            overflow-y: auto; 
+            margin-bottom: 10px; 
+        }
+        .contact-item { 
+            padding: 10px; 
+            border-bottom: 1px solid #ddd; 
+            cursor: pointer; 
+        }
+        .contact-item:hover { background-color: #f0f0f0; }
+        #contact-name, #offer, #answer { 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
     </style>
 </head>
 <body>
-    <div id="messages"></div>
-    <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-    <button onclick="sendMessage()">Enviar</button>
-    <h3>Oferta</h3>
-    <textarea id="offer"></textarea>
-    <button onclick="createOffer()">Criar Oferta</button>
-    <h3>Resposta</h3>
-    <textarea id="answer"></textarea>
-    <button onclick="createAnswer()">Criar Resposta</button>
-    <button onclick="setAnswer()">Definir Resposta</button>
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div id="input-container">
+            <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+            <button id="send-button" onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+    <button class="floating-button" onclick="toggleModal()">⚙️</button>
+
+    <div id="contacts-modal">
+        <h3>Contatos</h3>
+        <div id="contacts-list"></div>
+        <input type="text" id="contact-name" placeholder="Nome do contato">
+        <button onclick="addContact()">Adicionar Contato</button>
+        <h4>Configurações SDP</h4>
+        <textarea id="offer" placeholder="Oferta SDP"></textarea>
+        <textarea id="answer" placeholder="Resposta SDP"></textarea>
+        <button onclick="createOffer()">Criar Oferta</button>
+        <button onclick="createAnswer()">Criar Resposta</button>
+        <button onclick="setAnswer()">Definir Resposta</button>
+    </div>
 
     <script>
         let messagesContainer = document.getElementById('messages');
         let offerTextarea = document.getElementById('offer');
         let answerTextarea = document.getElementById('answer');
-        let localConnection;
-        let remoteConnection;
-        let sendChannel;
-        let receiveChannel;
-        let messageQueue = [];
+        let contactNameInput = document.getElementById('contact-name');
+        let contactsList = document.getElementById('contacts-list');
+        let localConnections = {}; // Armazenar todas as conexões WebRTC
+        let messageQueues = {}; // Fila de mensagens por contato
+        let db;
 
-        function createOffer() {
-            localConnection = new RTCPeerConnection();
-            sendChannel = localConnection.createDataChannel("sendChannel");
-            sendChannel.onopen = () => {
-                console.log("Canal de dados aberto");
-                flushMessageQueue();
+        // Inicializa o IndexedDB
+        let request = indexedDB.open("chatDatabase", 1);
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            let objectStore = db.createObjectStore("contacts", { keyPath: "name" });
+            let messageStore = db.createObjectStore("messages", { autoIncrement: true });
+            messageStore.createIndex("timestamp", "timestamp", { unique: false });
+        };
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            loadContacts();
+        };
+
+        // Carrega contatos do IndexedDB
+        function loadContacts() {
+            let transaction = db.transaction(["contacts"], "readonly");
+            let objectStore = transaction.objectStore("contacts");
+            objectStore.openCursor().onsuccess = function(event) {
+                let cursor = event.target.result;
+                if (cursor) {
+                    addContactToUI(cursor.value.name);
+                    cursor.continue();
+                }
             };
+        }
+
+        // Adiciona um novo contato
+        function addContact() {
+            let contactName = contactNameInput.value.trim();
+            if (contactName === "") return;
+
+            let transaction = db.transaction(["contacts"], "readwrite");
+            let objectStore = transaction.objectStore("contacts");
+            objectStore.add({ name: contactName });
+
+            addContactToUI(contactName);
+            contactNameInput.value = "";
+        }
+
+        // Adiciona contato à lista visualmente
+        function addContactToUI(contactName) {
+            let contactItem = document.createElement('div');
+            contactItem.classList.add('contact-item');
+            contactItem.textContent = contactName;
+            contactItem.onclick = () => selectContact(contactName);
+            contactsList.appendChild(contactItem);
+        }
+
+        // Seleciona um contato para iniciar a comunicação
+        function selectContact(contactName) {
+            document.getElementById('message-input').dataset.currentContact = contactName;
+            displayMessage(`Conectado com ${contactName}`, "Sistema");
+
+            if (!messageQueues[contactName]) {
+                messageQueues[contactName] = [];
+            }
+        }
+
+        // Exibe mensagens
+        function displayMessage(message, sender) {
+            let messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            if (sender === "Eu") messageDiv.classList.add('my-message');
+            messageDiv.textContent = `${sender}: ${message}`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Envia uma mensagem para o contato selecionado
+        function sendMessage() {
+            let input = document.getElementById('message-input');
+            let contactName = input.dataset.currentContact;
+            if (!contactName || input.value.trim() === "") return;
+
+            let message = {
+                text: input.value,
+                timestamp: Date.now(),
+                sender: "Eu"
+            };
+
+            // Armazenar mensagem no IndexedDB
+            let transaction = db.transaction(["messages"], "readwrite");
+            let objectStore = transaction.objectStore("messages");
+            objectStore.add(message);
+
+            // Exibe mensagem localmente
+            displayMessage(message.text, message.sender);
+
+            // Coloca mensagem na fila caso o canal não esteja aberto
+            if (!localConnections[contactName] || localConnections[contactName].sendChannel.readyState !== "open") {
+                messageQueues[contactName].push(message);
+            } else {
+                localConnections[contactName].sendChannel.send(message.text);
+            }
+
+            input.value = "";
+        }
+
+        // Função para criar oferta SDP
+        function createOffer() {
+            let contactName = document.getElementById('message-input').dataset.currentContact;
+            if (!contactName) return;
+
+            let localConnection = new RTCPeerConnection();
+            let sendChannel = localConnection.createDataChannel("sendChannel");
+            sendChannel.onopen = () => flushMessageQueue(contactName);
             sendChannel.onclose = () => console.log("Canal de dados fechado");
 
             localConnection.onicecandidate = e => {
-                if (e.candidate) return;
-                offerTextarea.value = JSON.stringify(localConnection.localDescription);
+                if (!e.candidate) {
+                    offerTextarea.value = JSON.stringify(localConnection.localDescription);
+                }
             };
 
             localConnection.createOffer()
                 .then(o => localConnection.setLocalDescription(o));
+
+            localConnections[contactName] = { localConnection, sendChannel };
         }
 
+        // Cria resposta SDP
         function createAnswer() {
-            remoteConnection = new RTCPeerConnection();
-            remoteConnection.onicecandidate = e => {
-                if (e.candidate) return;
-                answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
+            let contactName = document.getElementById('message-input').dataset.currentContact;
+            if (!contactName) return;
+
+            let remoteConnection = new RTCPeerConnection();
+            remoteConnection.ondatachannel = e => {
+                let receiveChannel = e.channel;
+                receiveChannel.onmessage = e => displayMessage(e.data, contactName);
             };
 
-            remoteConnection.ondatachannel = e => {
-                receiveChannel = e.channel;
-                receiveChannel.onmessage = e => displayMessage(e.data);
+            remoteConnection.onicecandidate = e => {
+                if (!e.candidate) {
+                    answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
+                }
             };
 
             let offer = JSON.parse(offerTextarea.value);
             remoteConnection.setRemoteDescription(new RTCSessionDescription(offer))
                 .then(() => remoteConnection.createAnswer())
-                .then(a => remoteConnection.setLocalDescription(a))
-                .then(() => {
-                    receiveChannel.onopen = () => {
-                        console.log("Canal de dados aberto no segundo dispositivo");
-                        flushMessageQueue();
-                    };
-                });
+                .then(a => remoteConnection.setLocalDescription(a));
+
+            localConnections[contactName].remoteConnection = remoteConnection;
         }
 
+        // Define resposta SDP
         function setAnswer() {
+            let contactName = document.getElementById('message-input').dataset.currentContact;
+            if (!contactName) return;
+
             let answer = JSON.parse(answerTextarea.value);
-            localConnection.setRemoteDescription(new RTCSessionDescription(answer));
+            localConnections[contactName].localConnection.setRemoteDescription(new RTCSessionDescription(answer));
         }
 
-        function sendMessage() {
-            let input = document.getElementById('message-input');
-            if (input.value.trim() === "") return;
-
-            // Armazena a mensagem na fila
-            messageQueue.push(input.value);
-            console.log("Mensagem enfileirada:", input.value);
-
-            // Exibe a mensagem localmente
-            displayMessage(input.value);
-
-            // Tenta enviar a mensagem se o canal de dados estiver aberto
-            flushMessageQueue();
-
-            input.value = '';
-        }
-
-        function flushMessageQueue() {
-            if (sendChannel && sendChannel.readyState === 'open') {
-                while (messageQueue.length > 0) {
-                    let message = messageQueue.shift();
-                    sendChannel.send(message);
-                    console.log("Mensagem enviada:", message);
+        // Envia as mensagens enfileiradas após a conexão ser estabelecida
+        function flushMessageQueue(contactName) {
+            if (messageQueues[contactName] && localConnections[contactName].sendChannel.readyState === "open") {
+                while (messageQueues[contactName].length > 0) {
+                    let message = messageQueues[contactName].shift();
+                    localConnections[contactName].sendChannel.send(message.text);
                 }
-            } else {
-                console.log("Canal de dados não está pronto");
-            }
-
-            if (receiveChannel && receiveChannel.readyState === 'open') {
-                while (messageQueue.length > 0) {
-                    let message = messageQueue.shift();
-                    receiveChannel.send(message);
-                    console.log("Mensagem enviada do segundo dispositivo:", message);
-                }
-            } else {
-                console.log("Canal de dados do segundo dispositivo não está pronto");
             }
         }
 
-        function displayMessage(message) {
-            let messageDiv = document.createElement('div');
-            messageDiv.classList.add('message');
-            messageDiv.textContent = message;
-            messagesContainer.appendChild(messageDiv);
-            console.log("Mensagem exibida:", message);
+        // Alterna a visibilidade do modal de contatos
+        function toggleModal() {
+            let modal = document.getElementById('contacts-modal');
+            modal.classList.toggle('active');
         }
     </script>
 </body>
