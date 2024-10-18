@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Text Chat</title>
+    <title>1WebRTC Text Chat</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
@@ -40,28 +40,34 @@
         // Envia mensagens quando o botão é clicado
         sendButton.onclick = () => {
             const message = messageInput.value;
-            dataChannel.send(message);
-            addMessage("Você: " + message);
-            messageInput.value = ""; // Limpa o campo de entrada
+            if (message) {
+                dataChannel.send(message);
+                addMessage("Você: " + message);
+                messageInput.value = ""; // Limpa o campo de entrada
+            }
         };
 
-        // Função para criar uma oferta e conectar
+        // Função para lidar com a sinalização
+        function handleSignal(signal) {
+            if (signal.type === "offer") {
+                localConnection.setRemoteDescription(new RTCSessionDescription(signal))
+                    .then(() => localConnection.createAnswer())
+                    .then(answer => {
+                        localConnection.setLocalDescription(answer);
+                        sendSignal(answer);
+                    });
+            } else if (signal.type === "answer") {
+                localConnection.setRemoteDescription(new RTCSessionDescription(signal));
+            } else if (signal.candidate) {
+                localConnection.addIceCandidate(new RTCIceCandidate(signal));
+            }
+        }
+
+        // Função para criar uma nova conexão
         async function startConnection() {
             const offer = await localConnection.createOffer();
             await localConnection.setLocalDescription(offer);
-            console.log("Offer: ", offer);
-            sendSignal(offer); // Envia a oferta via sinalização simulada
-
-            // Espera pela resposta do outro peer
-            window.addEventListener('storage', async (event) => {
-                if (event.key === 'signal' && event.newValue) {
-                    const answer = JSON.parse(event.newValue);
-                    await localConnection.setRemoteDescription(answer);
-                    const answerOffer = await localConnection.createAnswer();
-                    await localConnection.setLocalDescription(answerOffer);
-                    sendSignal(answerOffer); // Envia a resposta via sinalização simulada
-                }
-            });
+            sendSignal(offer);
         }
 
         // Função para enviar sinalizações usando localStorage
@@ -72,6 +78,21 @@
 
         // Inicia a conexão
         startConnection();
+
+        // Escuta mudanças no localStorage
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'signal' && event.newValue) {
+                const signal = JSON.parse(event.newValue);
+                handleSignal(signal);
+            }
+        });
+
+        // Gerencia candidatos ICE
+        localConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                sendSignal({ candidate: event.candidate });
+            }
+        };
     </script>
 </body>
 </html>
