@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat P2P com Gun</title>
-    <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
+    <title>Chat P2P com WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
@@ -13,7 +12,7 @@
     </style>
 </head>
 <body>
-    <h1>Chat P2P com Gun</h1>
+    <h1>Chat P2P com WebRTC</h1>
 
     <div id="messages"></div>
     <input type="text" id="messageInput" placeholder="Digite sua mensagem..." />
@@ -24,33 +23,61 @@
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
 
-        // Inicializa o Gun
-        const gun = Gun();
+        let localConnection;
+        let remoteConnection;
+        let sendChannel;
 
-        // Adiciona uma mensagem à interface
         function addMessage(message) {
             const messageElement = document.createElement("div");
             messageElement.textContent = message;
             messagesDiv.appendChild(messageElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem para a última mensagem
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem
         }
 
-        // Envio de mensagem
+        // Configuração das conexões
         sendButton.onclick = () => {
             const message = messageInput.value;
             if (message) {
-                // Armazena a mensagem no Gun
-                gun.get('chat').set({ text: message, timestamp: Date.now() });
+                sendChannel.send(message); // Envia a mensagem pela conexão
+                addMessage("Você: " + message); // Adiciona à interface
                 messageInput.value = ""; // Limpa o campo de entrada
             }
         };
 
-        // Recebe mensagens do Gun
-        gun.get('chat').map().on(data => {
-            if (data) {
-                addMessage(data.text); // Adiciona a mensagem à interface
-            }
-        });
+        async function setupConnection() {
+            localConnection = new RTCPeerConnection();
+            sendChannel = localConnection.createDataChannel("sendChannel");
+
+            sendChannel.onopen = () => console.log("Can send messages");
+            sendChannel.onclose = () => console.log("Send channel closed");
+
+            localConnection.onicecandidate = e => {
+                if (e.candidate) {
+                    remoteConnection.addIceCandidate(e.candidate);
+                }
+            };
+
+            remoteConnection = new RTCPeerConnection();
+            remoteConnection.ondatachannel = event => {
+                const receiveChannel = event.channel;
+                receiveChannel.onmessage = e => addMessage("Remoto: " + e.data);
+            };
+
+            remoteConnection.onicecandidate = e => {
+                if (e.candidate) {
+                    localConnection.addIceCandidate(e.candidate);
+                }
+            };
+
+            const offer = await localConnection.createOffer();
+            await localConnection.setLocalDescription(offer);
+            await remoteConnection.setRemoteDescription(offer);
+            const answer = await remoteConnection.createAnswer();
+            await remoteConnection.setLocalDescription(answer);
+            await localConnection.setRemoteDescription(answer);
+        }
+
+        setupConnection();
     </script>
 </body>
 </html>
