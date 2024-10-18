@@ -9,15 +9,16 @@
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
         #messageInput { width: 80%; }
         #sendButton { width: 15%; }
-        #peerId { margin-bottom: 10px; }
+        #peerIdDisplay { margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>Chat P2P com PeerJS</h1>
-    
+
+    <div id="peerIdDisplay">Seu ID do Peer: <span id="peerId"></span></div>
     <div>
-        <label for="peerId">ID do Peer:</label>
-        <input type="text" id="peerId" placeholder="ID do peer para conectar" />
+        <label for="connectId">ID do Peer para conectar:</label>
+        <input type="text" id="connectId" placeholder="Digite o ID do peer" />
         <button id="connectButton">Conectar</button>
     </div>
 
@@ -31,7 +32,7 @@
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
         const connectButton = document.getElementById("connectButton");
-        const peerIdInput = document.getElementById("peerId");
+        const peerIdDisplay = document.getElementById("peerId");
 
         // Cria um novo peer
         const peer = new Peer();
@@ -46,7 +47,7 @@
 
         // Recebe o ID do peer e se conecta a ele
         connectButton.onclick = () => {
-            const peerId = peerIdInput.value;
+            const peerId = document.getElementById("connectId").value;
             if (peerId) {
                 const conn = peer.connect(peerId);
                 conn.on('open', () => {
@@ -77,7 +78,7 @@
 
         // Quando o peer é criado, exibe o ID do peer
         peer.on('open', (id) => {
-            peerIdInput.value = id; // Exibe o ID do peer
+            peerIdDisplay.querySelector("#peerId").textContent = id; // Exibe o ID do peer
             addMessage("Seu ID do Peer: " + id);
         });
     </script>
