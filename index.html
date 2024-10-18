@@ -17,7 +17,7 @@
 <div id="messages"></div>
 <input type="text" id="input" placeholder="Digite sua mensagem..." />
 <button id="sendBtn">Enviar</button>
-<button id="connectBtn">Conectar</button>
+<button id="connectBtn">Criar Conexão</button>
 <textarea id="sdpInput" rows="4" placeholder="Cole SDP aqui para conectar..."></textarea>
 <button id="connectFromSDP">Conectar com SDP</button>
 <div id="status"></div>
@@ -29,17 +29,6 @@
     const input = document.getElementById('input');
     const statusDiv = document.getElementById('status');
 
-    // Função para armazenar mensagens no IndexedDB
-    function saveMessage(message) {
-        const dbRequest = indexedDB.open("ChatDB", 1);
-        dbRequest.onsuccess = (event) => {
-            const db = event.target.result;
-            const transaction = db.transaction(["messages"], "readwrite");
-            const store = transaction.objectStore("messages");
-            store.add({ id: Date.now(), text: message });
-        };
-    }
-
     // Função para exibir mensagens
     function appendMessage(message) {
         messagesDiv.innerHTML += `<div>${message}</div>`;
@@ -48,7 +37,9 @@
 
     // Função de criação da conexão
     function createConnection() {
-        peerConnection = new RTCPeerConnection();
+        // Adiciona o servidor STUN
+        const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        peerConnection = new RTCPeerConnection(iceServers);
 
         // Cria o canal de dados
         dataChannel = peerConnection.createDataChannel("chat");
@@ -59,8 +50,7 @@
         };
 
         dataChannel.onmessage = (event) => {
-            appendMessage(event.data);
-            saveMessage(event.data);
+            appendMessage("Amigo: " + event.data);
         };
 
         // Adiciona tratamento de ICE candidates
@@ -87,7 +77,9 @@
 
     // Função para conectar usando SDP
     function connectToPeer(sdp) {
-        peerConnection = new RTCPeerConnection();
+        // Adiciona o servidor STUN
+        const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        peerConnection = new RTCPeerConnection(iceServers);
 
         peerConnection.ondatachannel = event => {
             dataChannel = event.channel;
@@ -97,8 +89,7 @@
             };
 
             dataChannel.onmessage = (event) => {
-                appendMessage(event.data);
-                saveMessage(event.data);
+                appendMessage("Amigo: " + event.data);
             };
         };
 
@@ -108,6 +99,7 @@
             }
         };
 
+        // Ajuste aqui para lidar corretamente com SDP
         peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }))
             .then(() => peerConnection.createAnswer())
             .then(answer => {
@@ -132,7 +124,6 @@
             const message = input.value;
             dataChannel.send(message);
             appendMessage(`Você: ${message}`);
-            saveMessage(message);
             input.value = '';
         } else {
             alert("Conexão não estabelecida ainda!");
