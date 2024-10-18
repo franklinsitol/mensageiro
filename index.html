@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3Chat WebRTC</title>
+    <title>4Chat WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
         #chat-container { width: 90%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
@@ -60,15 +60,14 @@
             let objectStore = db.createObjectStore("messages", { autoIncrement: true });
             objectStore.createIndex("timestamp", "timestamp", { unique: false });
             objectStore.createIndex("contact", "contact", { unique: false });
-            let webrtcStore = db.createObjectStore("webrtc", { keyPath: "id" }); // Novo objeto para WebRTC
+            let webrtcStore = db.createObjectStore("webrtc", { keyPath: "id" });
         };
         request.onsuccess = function(event) {
             db = event.target.result;
             loadMessages();
-            loadWebRTCData(); // Carrega os dados WebRTC ao abrir a página
+            loadWebRTCData();
         };
 
-        // Função para carregar dados do WebRTC
         function loadWebRTCData() {
             let transaction = db.transaction(["webrtc"], "readonly");
             let objectStore = transaction.objectStore("webrtc");
@@ -86,13 +85,12 @@
         function createOffer() {
             localConnection = new RTCPeerConnection();
             sendChannel = localConnection.createDataChannel("sendChannel");
-            sendChannel.onopen = () => flushMessageQueue();
-            sendChannel.onclose = () => console.log("Canal de dados fechado");
+            setupSendChannel(sendChannel);
 
             localConnection.onicecandidate = e => {
                 if (!e.candidate) {
                     offerTextarea.value = JSON.stringify(localConnection.localDescription);
-                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: "" }); // Armazena a oferta
+                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: "" });
                 }
             };
 
@@ -100,30 +98,30 @@
                 .then(o => localConnection.setLocalDescription(o));
         }
 
+        function setupSendChannel(channel) {
+            channel.onopen = () => flushMessageQueue();
+            channel.onclose = () => console.log("Canal de dados fechado");
+            channel.onmessage = e => displayMessage(e.data, "Contato"); // Recebe mensagens do outro lado
+        }
+
         function createAnswer() {
             remoteConnection = new RTCPeerConnection();
             remoteConnection.ondatachannel = e => {
                 receiveChannel = e.channel;
-                receiveChannel.onmessage = e => displayMessage(e.data, "Contato");
+                setupSendChannel(receiveChannel); // Configura o canal de recebimento
             };
 
             remoteConnection.onicecandidate = e => {
                 if (!e.candidate) {
                     answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
-                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: answerTextarea.value }); // Armazena a resposta
+                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: answerTextarea.value });
                 }
             };
 
             let offer = JSON.parse(offerTextarea.value);
             remoteConnection.setRemoteDescription(new RTCSessionDescription(offer))
                 .then(() => remoteConnection.createAnswer())
-                .then(a => remoteConnection.setLocalDescription(a))
-                .then(() => {
-                    receiveChannel.onopen = () => {
-                        console.log("Canal de dados aberto no segundo dispositivo");
-                        flushMessageQueue();
-                    };
-                });
+                .then(a => remoteConnection.setLocalDescription(a));
         }
 
         function setAnswer() {
@@ -141,31 +139,23 @@
                 sender: "Eu"
             };
 
-            // Armazena a mensagem na fila
             messageQueue.push(message);
             storeMessage(message);
-
-            // Exibe a mensagem localmente
             displayMessage(message.text, message.sender);
-
-            // Tenta enviar a mensagem se o canal de dados estiver aberto
             flushMessageQueue();
-
             input.value = '';
         }
 
-        // Armazena mensagem no IndexedDB
         function storeMessage(message) {
             let transaction = db.transaction(["messages"], "readwrite");
             let objectStore = transaction.objectStore("messages");
             objectStore.add(message);
         }
 
-        // Armazena dados do WebRTC no IndexedDB
         function storeWebRTCData(data) {
             let transaction = db.transaction(["webrtc"], "readwrite");
             let objectStore = transaction.objectStore("webrtc");
-            objectStore.put(data); // Usa put para atualizar ou adicionar o objeto
+            objectStore.put(data);
         }
 
         function flushMessageQueue() {
@@ -174,13 +164,6 @@
                     let message = messageQueue.shift();
                     sendChannel.send(message.text);
                     console.log("Mensagem enviada:", message.text);
-                }
-            }
-            if (receiveChannel && receiveChannel.readyState === 'open') {
-                while (messageQueue.length > 0) {
-                    let message = messageQueue.shift();
-                    receiveChannel.send(message.text);
-                    console.log("Mensagem enviada do segundo dispositivo:", message.text);
                 }
             }
         }
