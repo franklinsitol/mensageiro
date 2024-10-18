@@ -10,6 +10,7 @@
         #messageInput { width: 80%; }
         #sendButton { width: 15%; }
         #offerInput { width: 100%; margin-top: 10px; }
+        #answerInput { width: 100%; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -20,7 +21,12 @@
     <button id="sendButton">Enviar</button>
 
     <h3>Conexão</h3>
-    <textarea id="offerInput" placeholder="Cole a oferta aqui (se houver)"></textarea>
+    <h4>Oferta</h4>
+    <textarea id="offerInput" placeholder="Cole a oferta aqui (se houver)" readonly></textarea>
+    <button id="createOfferButton">Criar Oferta</button>
+
+    <h4>Resposta</h4>
+    <textarea id="answerInput" placeholder="Cole a resposta aqui (se houver)"></textarea>
     <button id="connectButton">Conectar</button>
 
     <script>
@@ -28,7 +34,9 @@
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
         const offerInput = document.getElementById("offerInput");
+        const answerInput = document.getElementById("answerInput");
         const connectButton = document.getElementById("connectButton");
+        const createOfferButton = document.getElementById("createOfferButton");
 
         let localConnection;
         let remoteConnection;
@@ -51,20 +59,23 @@
             }
         };
 
-        // Conecta ao outro peer usando a oferta copiada
+        // Cria uma nova oferta e a exibe
+        createOfferButton.onclick = async () => {
+            setupConnection(); // Configura a conexão
+            const offer = await localConnection.createOffer();
+            await localConnection.setLocalDescription(offer);
+            offerInput.value = JSON.stringify(localConnection.localDescription); // Exibe a oferta
+        };
+
+        // Conecta ao outro peer usando a resposta copiada
         connectButton.onclick = async () => {
-            const offer = offerInput.value;
-            if (offer) {
-                // Cria uma nova conexão se já não houver uma
-                if (!localConnection) {
-                    setupConnection();
-                }
+            const answer = answerInput.value;
+            if (answer) {
                 // Define a descrição remota
-                await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offer)));
-                const answer = await remoteConnection.createAnswer();
-                await remoteConnection.setLocalDescription(answer);
-                const answerString = JSON.stringify(remoteConnection.localDescription);
-                offerInput.value = answerString; // Exibe a resposta para o outro peer
+                await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(answer)));
+                const localAnswer = await remoteConnection.createAnswer();
+                await remoteConnection.setLocalDescription(localAnswer);
+                answerInput.value = JSON.stringify(remoteConnection.localDescription); // Exibe a resposta
             }
         };
 
@@ -92,12 +103,6 @@
                     localConnection.addIceCandidate(e.candidate);
                 }
             };
-
-            // Cria uma oferta e define a descrição local
-            const offer = await localConnection.createOffer();
-            await localConnection.setLocalDescription(offer);
-            const offerString = JSON.stringify(localConnection.localDescription);
-            offerInput.value = offerString; // Exibe a oferta para o outro peer
         }
     </script>
 </body>
