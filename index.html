@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4Chat WebRTC</title>
+    <title>5Chat WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
         #chat-container { width: 90%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
@@ -16,7 +16,6 @@
         .floating-button { position: fixed; bottom: 20px; right: 20px; background: #0084ff; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .hidden { display: none; }
         #contacts { padding: 20px; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 10px; width: 90%; max-width: 400px; z-index: 100; }
-        #contact-name { margin-bottom: 10px; }
         button { margin-top: 10px; padding: 10px; width: 100%; border: none; border-radius: 5px; cursor: pointer; }
         #create-offer { background: #0084ff; color: white; }
         #create-answer { background: #00aaff; color: white; }
@@ -40,6 +39,7 @@
         <textarea id="answer" placeholder="Resposta SDP"></textarea>
         <button id="create-answer" onclick="createAnswer()">Criar Resposta</button>
         <button id="set-answer" onclick="setAnswer()">Definir Resposta</button>
+        <button id="join-call" onclick="joinCall()">Entrar na chamada</button>
     </div>
 
     <script>
@@ -51,37 +51,8 @@
         let sendChannel;
         let receiveChannel;
         let messageQueue = [];
-        let db;
 
-        // Inicializa o IndexedDB
-        let request = indexedDB.open("chatDatabase", 1);
-        request.onupgradeneeded = function(event) {
-            db = event.target.result;
-            let objectStore = db.createObjectStore("messages", { autoIncrement: true });
-            objectStore.createIndex("timestamp", "timestamp", { unique: false });
-            objectStore.createIndex("contact", "contact", { unique: false });
-            let webrtcStore = db.createObjectStore("webrtc", { keyPath: "id" });
-        };
-        request.onsuccess = function(event) {
-            db = event.target.result;
-            loadMessages();
-            loadWebRTCData();
-        };
-
-        function loadWebRTCData() {
-            let transaction = db.transaction(["webrtc"], "readonly");
-            let objectStore = transaction.objectStore("webrtc");
-            let request = objectStore.get("webrtcData");
-
-            request.onsuccess = function(event) {
-                let data = event.target.result;
-                if (data) {
-                    offerTextarea.value = data.offer || "";
-                    answerTextarea.value = data.answer || "";
-                }
-            };
-        }
-
+        // Função para criar uma oferta e gerar a URL
         function createOffer() {
             localConnection = new RTCPeerConnection();
             sendChannel = localConnection.createDataChannel("sendChannel");
@@ -89,8 +60,10 @@
 
             localConnection.onicecandidate = e => {
                 if (!e.candidate) {
-                    offerTextarea.value = JSON.stringify(localConnection.localDescription);
-                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: "" });
+                    let offer = JSON.stringify(localConnection.localDescription);
+                    offerTextarea.value = offer;
+                    const url = `${window.location.href}?offer=${encodeURIComponent(offer)}`;
+                    prompt("Compartilhe esta URL com o outro dispositivo:", url);
                 }
             };
 
@@ -98,28 +71,50 @@
                 .then(o => localConnection.setLocalDescription(o));
         }
 
+        // Configura o canal de envio e recebe mensagens
         function setupSendChannel(channel) {
             channel.onopen = () => flushMessageQueue();
             channel.onclose = () => console.log("Canal de dados fechado");
-            channel.onmessage = e => displayMessage(e.data, "Contato"); // Recebe mensagens do outro lado
+            channel.onmessage = e => displayMessage(e.data, "Contato");
+        }
+
+        // Função para entrar em uma chamada usando a oferta fornecida na URL
+        function joinCall() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const offer = urlParams.get('offer');
+            if (offer) {
+                remoteConnection = new RTCPeerConnection();
+                remoteConnection.ondatachannel = e => {
+                    receiveChannel = e.channel;
+                    setupSendChannel(receiveChannel);
+                };
+
+                remoteConnection.onicecandidate = e => {
+                    if (!e.candidate) {
+                        answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
+                    }
+                };
+
+                remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(decodeURIComponent(offer))))
+                    .then(() => remoteConnection.createAnswer())
+                    .then(a => remoteConnection.setLocalDescription(a));
+            }
         }
 
         function createAnswer() {
             remoteConnection = new RTCPeerConnection();
             remoteConnection.ondatachannel = e => {
                 receiveChannel = e.channel;
-                setupSendChannel(receiveChannel); // Configura o canal de recebimento
+                setupSendChannel(receiveChannel);
             };
 
             remoteConnection.onicecandidate = e => {
                 if (!e.candidate) {
                     answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
-                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: answerTextarea.value });
                 }
             };
 
-            let offer = JSON.parse(offerTextarea.value);
-            remoteConnection.setRemoteDescription(new RTCSessionDescription(offer))
+            remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerTextarea.value)))
                 .then(() => remoteConnection.createAnswer())
                 .then(a => remoteConnection.setLocalDescription(a));
         }
@@ -140,22 +135,9 @@
             };
 
             messageQueue.push(message);
-            storeMessage(message);
             displayMessage(message.text, message.sender);
             flushMessageQueue();
             input.value = '';
-        }
-
-        function storeMessage(message) {
-            let transaction = db.transaction(["messages"], "readwrite");
-            let objectStore = transaction.objectStore("messages");
-            objectStore.add(message);
-        }
-
-        function storeWebRTCData(data) {
-            let transaction = db.transaction(["webrtc"], "readwrite");
-            let objectStore = transaction.objectStore("webrtc");
-            objectStore.put(data);
         }
 
         function flushMessageQueue() {
@@ -182,18 +164,6 @@
         function toggleContacts() {
             let contacts = document.getElementById('contacts');
             contacts.classList.toggle('hidden');
-        }
-
-        function loadMessages() {
-            let transaction = db.transaction(["messages"], "readonly");
-            let objectStore = transaction.objectStore("messages");
-            objectStore.openCursor().onsuccess = function(event) {
-                let cursor = event.target.result;
-                if (cursor) {
-                    displayMessage(cursor.value.text, cursor.value.sender);
-                    cursor.continue();
-                }
-            };
         }
     </script>
 </body>
