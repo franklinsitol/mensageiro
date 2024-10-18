@@ -39,13 +39,14 @@
         sendButton.onclick = () => {
             const message = messageInput.value;
             if (message) {
-                gun.get('chat').set({ text: message, timestamp: Date.now() }); // Armazena a mensagem no Gun
+                // Armazena a mensagem no Gun
+                gun.get('chat').set({ text: message, timestamp: Date.now() });
                 messageInput.value = ""; // Limpa o campo de entrada
             }
         };
 
         // Recebe mensagens do Gun
-        gun.get('chat').on(data => {
+        gun.get('chat').map().on(data => {
             if (data) {
                 addMessage(data.text); // Adiciona a mensagem à interface
             }
