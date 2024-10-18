@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat WebRTC</title>
+    <title>02Chat WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
         #chat-container { width: 90%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
@@ -60,7 +60,7 @@
             let objectStore = db.createObjectStore("messages", { autoIncrement: true });
             objectStore.createIndex("timestamp", "timestamp", { unique: false });
             objectStore.createIndex("contact", "contact", { unique: false });
-            objectStore.createObjectStore("webrtc", { keyPath: "id" }); // Novo objeto para WebRTC
+            let webrtcStore = db.createObjectStore("webrtc", { keyPath: "id" }); // Novo objeto para WebRTC
         };
         request.onsuccess = function(event) {
             db = event.target.result;
@@ -77,9 +77,11 @@
             request.onsuccess = function(event) {
                 let data = event.target.result;
                 if (data) {
-                    offerTextarea.value = data.offer;
-                    answerTextarea.value = data.answer;
-                    createAnswer(); // Cria a resposta usando os dados armazenados
+                    offerTextarea.value = data.offer || "";
+                    answerTextarea.value = data.answer || "";
+                    if (data.offer) {
+                        createAnswer(); // Cria a resposta se houver uma oferta
+                    }
                 }
             };
         }
@@ -93,7 +95,7 @@
             localConnection.onicecandidate = e => {
                 if (!e.candidate) {
                     offerTextarea.value = JSON.stringify(localConnection.localDescription);
-                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value }); // Armazena a oferta
+                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: "" }); // Armazena a oferta
                 }
             };
 
