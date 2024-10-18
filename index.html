@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>02Chat WebRTC</title>
+    <title>3Chat WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
         #chat-container { width: 90%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
@@ -65,23 +65,20 @@
         request.onsuccess = function(event) {
             db = event.target.result;
             loadMessages();
-            reconnectIfPossible(); // Tenta reconectar se houver dados armazenados
+            loadWebRTCData(); // Carrega os dados WebRTC ao abrir a página
         };
 
-        // Função para tentar reconectar
-        function reconnectIfPossible() {
+        // Função para carregar dados do WebRTC
+        function loadWebRTCData() {
             let transaction = db.transaction(["webrtc"], "readonly");
             let objectStore = transaction.objectStore("webrtc");
-            let request = objectStore.get("webrtcData"); // Recupera os dados do WebRTC
+            let request = objectStore.get("webrtcData");
 
             request.onsuccess = function(event) {
                 let data = event.target.result;
                 if (data) {
                     offerTextarea.value = data.offer || "";
                     answerTextarea.value = data.answer || "";
-                    if (data.offer) {
-                        createAnswer(); // Cria a resposta se houver uma oferta
-                    }
                 }
             };
         }
