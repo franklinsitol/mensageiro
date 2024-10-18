@@ -41,6 +41,10 @@
         .scanner {
             margin-top: 20px;
         }
+        .status-message {
+            color: green;
+            margin-top: 10px;
+        }
         canvas {
             display: none;
         }
@@ -55,10 +59,13 @@
         <textarea id="sdpOffer" readonly style="width:100%; margin-top: 10px;"></textarea>
         <button onclick="copySDP()">Copy SDP</button>
         
-        <!-- New Field for Pasting SDP -->
+        <!-- Campo para colar SDP -->
         <h4>Paste Remote SDP</h4>
         <textarea id="sdpPaste" style="width:100%; margin-top: 10px;"></textarea>
         <button onclick="connectUsingSDP()">Connect</button>
+
+        <!-- Mensagem de status da conexão -->
+        <div id="statusMessage" class="status-message"></div>
     </div>
 
     <div class="chat">
@@ -92,11 +99,7 @@
         const contactList = document.getElementById('contactList');
         const sdpOfferTextarea = document.getElementById('sdpOffer');
         const sdpPasteTextarea = document.getElementById('sdpPaste');
-
-        // Load contacts from IndexedDB on page load
-        window.onload = function() {
-            loadContacts();
-        };
+        const statusMessage = document.getElementById('statusMessage'); // Message for connection status
 
         // Initialize a new WebRTC connection and generate QR Code for SDP offer
         function createNewConnection() {
@@ -174,13 +177,22 @@
             }
         }
 
-        // Handle scanned SDP data
+        // Handle scanned or pasted SDP data
         function handleScannedSDP(sdp) {
             const peerConnection = createConnection('scannedPeer');
-            peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
-            peerConnection.createAnswer().then(answer => {
-                peerConnection.setLocalDescription(answer);
-            });
+            peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }))
+                .then(() => {
+                    return peerConnection.createAnswer();
+                })
+                .then(answer => {
+                    peerConnection.setLocalDescription(answer);
+                    statusMessage.textContent = "Connection established successfully!"; // Success message
+                    statusMessage.style.color = "green"; // Set color to green for success
+                })
+                .catch(error => {
+                    statusMessage.textContent = "Failed to connect: " + error;
+                    statusMessage.style.color = "red"; // Set color to red for errors
+                });
         }
 
         // Create a new RTCPeerConnection
@@ -198,65 +210,6 @@
             };
             peerConnections[id] = { peerConnection };
             return peerConnection;
-        }
-
-        // Load contacts from IndexedDB
-        async function loadContacts() {
-            const db = await openDB();
-            const tx = db.transaction('contacts', 'readonly');
-            const store = tx.objectStore('contacts');
-            const allContacts = await store.getAll();
-
-            contacts = allContacts;
-            renderContacts();
-        }
-
-        // Add contact to IndexedDB
-        async function addContact(contactId, sdp) {
-            const db = await openDB();
-            const tx = db.transaction('contacts', 'readwrite');
-            const store = tx.objectStore('contacts');
-            await store.put({ id: contactId, sdp });
-            contacts.push({ id: contactId, sdp });
-            renderContacts();
-        }
-
-        // Render contacts on UI
-        function renderContacts() {
-            contactList.innerHTML = '';
-            contacts.forEach(contact => {
-                const contactDiv = document.createElement('div');
-                contactDiv.classList.add('contact-item');
-                contactDiv.textContent = 'Contact: ' + contact.id;
-                contactDiv.onclick = () => reconnect(contact.id, contact.sdp);
-                contactList.appendChild(contactDiv);
-            });
-        }
-
-        // Function to handle reconnection with stored SDP
-        function reconnect(contactId, sdp) {
-            const peerConnection = createConnection(contactId);
-            peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
-            peerConnection.createAnswer().then(answer => {
-                peerConnection.setLocalDescription(answer);
-            });
-        }
-
-        // Open IndexedDB for storing contacts
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open('contactsDB', 1);
-                request.onerror = (event) => {
-                    reject('Error opening IndexedDB');
-                };
-                request.onsuccess = (event) => {
-                    resolve(event.target.result);
-                };
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    db.createObjectStore('contacts', { keyPath: 'id' });
-                };
-            });
         }
 
         // Send message to connected peers
