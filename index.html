@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>0Chat P2P com WebRTC</title>
+    <title>Chat P2P com WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
@@ -37,6 +37,7 @@
 
     <h4>Resposta</h4>
     <textarea id="answerInput" placeholder="Cole a resposta aqui (se houver)"></textarea>
+    <button id="createAnswerButton">Criar Resposta</button>
     <button id="connectButton">Conectar</button>
 
     <script>
@@ -47,6 +48,7 @@
         const answerInput = document.getElementById("answerInput");
         const connectButton = document.getElementById("connectButton");
         const createOfferButton = document.getElementById("createOfferButton");
+        const createAnswerButton = document.getElementById("createAnswerButton");
 
         let localConnection;
         let remoteConnection;
@@ -81,17 +83,16 @@
             updateStep(2, 'in-progress');
         };
 
-        // Conecta ao outro peer usando a resposta copiada
-        connectButton.onclick = async () => {
-            const answer = answerInput.value;
-            if (answer) {
-                // Define a descrição remota
-                await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(answer)));
-                
+        // Cria a resposta a partir da oferta
+        createAnswerButton.onclick = async () => {
+            const offer = offerInput.value;
+            if (offer) {
+                await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offer)));
+
                 // Cria a resposta e define a descrição local
                 const localAnswer = await remoteConnection.createAnswer();
                 await remoteConnection.setLocalDescription(localAnswer);
-                
+
                 // Exibe a resposta gerada
                 answerInput.value = JSON.stringify(remoteConnection.localDescription); // Exibe a resposta
                 addMessage("Resposta gerada: " + answerInput.value); // Adiciona a resposta gerada ao chat
@@ -99,6 +100,17 @@
                 // Atualiza o progresso
                 updateStep(2, 'completed');
                 updateStep(3, 'completed');
+            }
+        };
+
+        // Conecta ao outro peer usando a resposta copiada
+        connectButton.onclick = async () => {
+            const answer = answerInput.value;
+            if (answer) {
+                // Define a descrição remota
+                await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(answer)));
+
+                // Atualiza o progresso
                 updateStep(4, 'in-progress');
             }
         };
