@@ -149,7 +149,15 @@
                 alert("Please paste a valid SDP");
                 return;
             }
-            handleScannedSDP(sdp); // Use the pasted SDP
+
+            // Clean SDP of any invalid lines
+            const cleanedSDP = cleanSDP(sdp);
+            handleScannedSDP(cleanedSDP); // Use the cleaned SDP
+        }
+
+        // Clean the SDP by removing invalid lines like "a=max-message-size"
+        function cleanSDP(sdp) {
+            return sdp.split('\n').filter(line => !line.includes('a=max-message-size')).join('\n');
         }
 
         // Scan QR Code using camera and process SDP answer
@@ -168,7 +176,7 @@
             let qrCode = jsQR(imageData.data, imageData.width, imageData.height);
 
             if (qrCode) {
-                handleScannedSDP(qrCode.data); // Process the SDP once detected
+                handleScannedSDP(cleanSDP(qrCode.data)); // Process the cleaned SDP once detected
                 scanning = false; // Stop scanning after success
                 video.srcObject.getTracks().forEach(track => track.stop()); // Stop the video stream
                 alert("QR Code scanned successfully!");
