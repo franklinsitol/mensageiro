@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1Chat P2P com WebRTC</title>
+    <title>Chat P2P com WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
@@ -72,9 +72,14 @@
             if (answer) {
                 // Define a descrição remota
                 await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(answer)));
+                
+                // Cria a resposta e define a descrição local
                 const localAnswer = await remoteConnection.createAnswer();
                 await remoteConnection.setLocalDescription(localAnswer);
-                answerInput.value = JSON.stringify(remoteConnection.localDescription); // Exibe a resposta
+                
+                // Exibe a resposta gerada
+                answerInput.value = JSON.stringify(remoteConnection.localDescription);
+                addMessage("Resposta gerada: " + answerInput.value); // Adiciona a resposta gerada ao chat
             }
         };
 
