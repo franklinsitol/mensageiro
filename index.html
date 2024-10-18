@@ -3,38 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1Chat P2P com WebTorrent</title>
+    <title>Chat P2P com PeerJS</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
         #messageInput { width: 80%; }
         #sendButton { width: 15%; }
-        #torrentId { width: 100%; margin-bottom: 10px; }
+        #peerId { margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h1>Chat P2P com WebTorrent</h1>
-
+    <h1>Chat P2P com PeerJS</h1>
+    
     <div>
-        <label for="torrentId">Coloque o ID do Torrent (ou crie um novo):</label>
-        <input type="text" id="torrentId" placeholder="ID do torrent" />
-        <button id="createTorrent">Criar Torrent</button>
+        <label for="peerId">ID do Peer:</label>
+        <input type="text" id="peerId" placeholder="ID do peer para conectar" />
+        <button id="connectButton">Conectar</button>
     </div>
 
     <div id="messages"></div>
     <input type="text" id="messageInput" placeholder="Digite sua mensagem..." disabled />
     <button id="sendButton" disabled>Enviar</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/webtorrent/webtorrent.min.js"></script>
+    <script src="https://cdn.peerjs.com/peerjs.min.js"></script>
     <script>
-        const client = new WebTorrent();
-        let torrent;
-
-        const torrentIdInput = document.getElementById('torrentId');
         const messagesDiv = document.getElementById("messages");
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
-        const createTorrentButton = document.getElementById("createTorrent");
+        const connectButton = document.getElementById("connectButton");
+        const peerIdInput = document.getElementById("peerId");
+
+        // Cria um novo peer
+        const peer = new Peer();
 
         // Função para adicionar mensagens ao chat
         function addMessage(message) {
@@ -44,62 +44,42 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem para a última mensagem
         }
 
-        // Função para enviar uma mensagem
+        // Recebe o ID do peer e se conecta a ele
+        connectButton.onclick = () => {
+            const peerId = peerIdInput.value;
+            if (peerId) {
+                const conn = peer.connect(peerId);
+                conn.on('open', () => {
+                    addMessage("Conectado ao peer: " + peerId);
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+
+                    // Recebe mensagens do peer
+                    conn.on('data', (data) => {
+                        addMessage("Outro: " + data);
+                    });
+                });
+            }
+        };
+
+        // Envio de mensagem
         sendButton.onclick = () => {
             const message = messageInput.value;
             if (message) {
-                // Envia a mensagem para todos os peers
-                torrent.wires.forEach(wire => {
-                    wire.peer.send(message);
-                });
-                addMessage("Você: " + message);
-                messageInput.value = ""; // Limpa o campo de entrada
+                const conn = peer.connections[Object.keys(peer.connections)[0]][0]; // Pega a conexão ativa
+                if (conn) {
+                    conn.send(message);
+                    addMessage("Você: " + message);
+                    messageInput.value = ""; // Limpa o campo de entrada
+                }
             }
         };
 
-        // Função para receber mensagens
-        function receiveMessage(wire) {
-            wire.peer.on('data', (data) => {
-                addMessage("Outro: " + data.toString());
-            });
-        }
-
-        // Função para criar ou adicionar-se a um torrent
-        createTorrentButton.onclick = () => {
-            const torrentId = torrentIdInput.value;
-
-            if (torrentId) {
-                // Conectar a um torrent existente
-                client.add(torrentId, (t) => {
-                    torrent = t;
-                    addMessage("Conectado ao torrent " + torrentId);
-                    enableChat();
-                    torrent.wires.forEach(receiveMessage);
-                });
-            } else {
-                // Criar um novo torrent (canal de comunicação)
-                const buffer = new Uint8Array([0]); // Usamos um array vazio como placeholder
-                client.seed(buffer, (t) => {
-                    torrent = t;
-                    addMessage("Novo torrent criado: " + torrent.magnetURI);
-                    torrentIdInput.value = torrent.magnetURI;
-                    enableChat();
-                    torrent.wires.forEach(receiveMessage);
-                });
-            }
-        };
-
-        // Habilitar o chat quando conectado ao torrent
-        function enableChat() {
-            messageInput.disabled = false;
-            sendButton.disabled = false;
-
-            // Detecta novos peers e recebe mensagens
-            torrent.on('wire', (wire) => {
-                addMessage("Novo peer conectado!");
-                receiveMessage(wire);
-            });
-        }
+        // Quando o peer é criado, exibe o ID do peer
+        peer.on('open', (id) => {
+            peerIdInput.value = id; // Exibe o ID do peer
+            addMessage("Seu ID do Peer: " + id);
+        });
     </script>
 </body>
 </html>
