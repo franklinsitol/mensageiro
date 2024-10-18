@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Messenger with QR Code</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.3.1/dist/jsQR.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .contacts, .chat {
+            width: 50%;
+            float: left;
+            padding: 20px;
+        }
+        .contacts {
+            background-color: #f4f4f4;
+        }
+        .contact-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .chat-window {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+        }
+        .chat-input {
+            width: calc(100% - 20px);
+            padding: 10px;
+        }
+        .qrcode {
+            margin-top: 20px;
+        }
+        .scanner {
+            margin-top: 20px;
+        }
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="contacts">
+        <h3>Contacts</h3>
+        <div id="contactList"></div>
+        <button onclick="createNewConnection()">Create New Connection</button>
+        <div class="qrcode" id="qrcode"></div>
+        <textarea id="sdpOffer" readonly style="width:100%; margin-top: 10px;"></textarea>
+        <button onclick="copySDP()">Copy SDP</button>
+    </div>
+
+    <div class="chat">
+        <h3>Chat</h3>
+        <div id="chatWindow" class="chat-window"></div>
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+
+        <div class="scanner">
+            <h3>Scan QR Code</h3>
+            <video id="video" width="320" height="240" autoplay></video>
+            <canvas id="canvas" width="320" height="240"></canvas>
+            <button onclick="scanQRCode()">Start Scanning</button>
+        </div>
+    </div>
+
+    <script>
+        let peerConnections = {}; // Store multiple peer connections
+        let localConnection;
+        let remoteConnection;
+        let dataChannel;
+        let contacts = [];
+        let qrCodeDiv = document.getElementById('qrcode');
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        let scanning = false;
+
+        const chatWindow = document.getElementById('chatWindow');
+        const chatInput = document.getElementById('chatInput');
+        const contactList = document.getElementById('contactList');
+        const sdpOfferTextarea = document.getElementById('sdpOffer');
+
+        // Load contacts from IndexedDB on page load
+        window.onload = function() {
+            loadContacts();
+        };
+
+        // Initialize a new WebRTC connection and generate QR Code for SDP offer
+        function createNewConnection() {
+            const peerConnection = new RTCPeerConnection();
+            const dataChannel = peerConnection.createDataChannel("chat");
+
+            dataChannel.onmessage = function(event) {
+                appendMessage(event.data, 'received');
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // Handle ICE candidate exchange if needed
+                }
+            };
+
+            peerConnection.createOffer().then(offer => {
+                peerConnection.setLocalDescription(offer);
+                generateQRCode(offer.sdp);
+                sdpOfferTextarea.value = offer.sdp; // Show the SDP in textarea for copying
+            });
+
+            peerConnections['newPeer'] = { peerConnection, dataChannel };
+        }
+
+        // Generate QR Code for SDP offer
+        function generateQRCode(sdp) {
+            qrCodeDiv.innerHTML = '';
+            new QRCode(qrCodeDiv, {
+                text: sdp,
+                width: 256,
+                height: 256
+            });
+        }
+
+        // Copy SDP to clipboard
+        function copySDP() {
+            sdpOfferTextarea.select();
+            document.execCommand('copy');
+            alert("SDP copied to clipboard!");
+        }
+
+        // Scan QR Code using camera and process SDP answer
+        function scanQRCode() {
+            scanning = true;
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream) {
+                video.srcObject = stream;
+                scanLoop();
+            });
+        }
+
+        function scanLoop() {
+            if (!scanning) return;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (qrCode) {
+                handleScannedSDP(qrCode.data); // Process the SDP once detected
+                scanning = false; // Stop scanning after success
+                video.srcObject.getTracks().forEach(track => track.stop()); // Stop the video stream
+                alert("QR Code scanned successfully!");
+            } else {
+                requestAnimationFrame(scanLoop); // Keep scanning if not detected
+            }
+        }
+
+        // Handle scanned SDP data
+        function handleScannedSDP(sdp) {
+            const peerConnection = createConnection('scannedPeer');
+            peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+            peerConnection.createAnswer().then(answer => {
+                peerConnection.setLocalDescription(answer);
+            });
+        }
+
+        // Create a new RTCPeerConnection
+        function createConnection(id) {
+            const peerConnection = new RTCPeerConnection();
+            peerConnection.ondatachannel = (event) => {
+                event.channel.onmessage = (msgEvent) => {
+                    appendMessage(msgEvent.data, 'received');
+                };
+            };
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // Handle ICE candidate exchange if needed
+                }
+            };
+            peerConnections[id] = { peerConnection };
+            return peerConnection;
+        }
+
+        // Load contacts from IndexedDB
+        async function loadContacts() {
+            const db = await openDB();
+            const tx = db.transaction('contacts', 'readonly');
+            const store = tx.objectStore('contacts');
+            const allContacts = await store.getAll();
+
+            contacts = allContacts;
+            renderContacts();
+        }
+
+        // Add contact to IndexedDB
+        async function addContact(contactId, sdp) {
+            const db = await openDB();
+            const tx = db.transaction('contacts', 'readwrite');
+            const store = tx.objectStore('contacts');
+            await store.put({ id: contactId, sdp });
+            contacts.push({ id: contactId, sdp });
+            renderContacts();
+        }
+
+        // Render contacts on UI
+        function renderContacts() {
+            contactList.innerHTML = '';
+            contacts.forEach(contact => {
+                const contactDiv = document.createElement('div');
+                contactDiv.classList.add('contact-item');
+                contactDiv.textContent = 'Contact: ' + contact.id;
+                contactDiv.onclick = () => reconnect(contact.id, contact.sdp);
+                contactList.appendChild(contactDiv);
+            });
+        }
+
+        // Function to handle reconnection with stored SDP
+        function reconnect(contactId, sdp) {
+            const peerConnection = createConnection(contactId);
+            peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+            peerConnection.createAnswer().then(answer => {
+                peerConnection.setLocalDescription(answer);
+            });
+        }
+
+        // Open or create IndexedDB
+        async function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("p2pContactsDB", 1);
+                request.onerror = (event) => {
+                    console.error("Error opening IndexedDB", event);
+                    reject(event);
+                };
+                request.onsuccess = (event) => {
+                    resolve(event.target.result);
+                };
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('contacts')) {
+                        db.createObjectStore('contacts', { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        // Send message to connected peers
+        function sendMessage() {
+            const message = chatInput.value;
+            appendMessage(message, 'sent');
+            Object.values(peerConnections).forEach(({ dataChannel }) => {
+                if (dataChannel && dataChannel.readyState === 'open') {
+                    dataChannel.send(message);
+                }
+            });
+            chatInput.value = '';
+        }
+
+        // Append message to chat window
+        function appendMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.classList.add(type === 'sent' ? 'sent-message' : 'received-message');
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight; // Auto scroll to bottom
+        }
+    </script>
+</body>
+</html>
