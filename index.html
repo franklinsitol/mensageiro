@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat WebRTC01</title>
+    <title>Chat WebRTC</title>
     <style>
         body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
         #chat-container { width: 90%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
@@ -60,25 +60,26 @@
             let objectStore = db.createObjectStore("messages", { autoIncrement: true });
             objectStore.createIndex("timestamp", "timestamp", { unique: false });
             objectStore.createIndex("contact", "contact", { unique: false });
+            objectStore.createObjectStore("webrtc", { keyPath: "id" }); // Novo objeto para WebRTC
         };
         request.onsuccess = function(event) {
             db = event.target.result;
             loadMessages();
+            reconnectIfPossible(); // Tenta reconectar se houver dados armazenados
         };
 
-        // Carrega mensagens do IndexedDB
-        function loadMessages() {
-            let transaction = db.transaction(["messages"], "readonly");
-            let objectStore = transaction.objectStore("messages");
-            let index = objectStore.index("timestamp");
-            let now = Date.now();
-            let range = IDBKeyRange.lowerBound(now - 24 * 60 * 60 * 1000);
+        // Função para tentar reconectar
+        function reconnectIfPossible() {
+            let transaction = db.transaction(["webrtc"], "readonly");
+            let objectStore = transaction.objectStore("webrtc");
+            let request = objectStore.get("webrtcData"); // Recupera os dados do WebRTC
 
-            index.openCursor(range).onsuccess = function(event) {
-                let cursor = event.target.result;
-                if (cursor) {
-                    displayMessage(cursor.value.text, cursor.value.sender);
-                    cursor.continue();
+            request.onsuccess = function(event) {
+                let data = event.target.result;
+                if (data) {
+                    offerTextarea.value = data.offer;
+                    answerTextarea.value = data.answer;
+                    createAnswer(); // Cria a resposta usando os dados armazenados
                 }
             };
         }
@@ -92,6 +93,7 @@
             localConnection.onicecandidate = e => {
                 if (!e.candidate) {
                     offerTextarea.value = JSON.stringify(localConnection.localDescription);
+                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value }); // Armazena a oferta
                 }
             };
 
@@ -109,6 +111,7 @@
             remoteConnection.onicecandidate = e => {
                 if (!e.candidate) {
                     answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
+                    storeWebRTCData({ id: "webrtcData", offer: offerTextarea.value, answer: answerTextarea.value }); // Armazena a resposta
                 }
             };
 
@@ -159,6 +162,13 @@
             objectStore.add(message);
         }
 
+        // Armazena dados do WebRTC no IndexedDB
+        function storeWebRTCData(data) {
+            let transaction = db.transaction(["webrtc"], "readwrite");
+            let objectStore = transaction.objectStore("webrtc");
+            objectStore.put(data); // Usa put para atualizar ou adicionar o objeto
+        }
+
         function flushMessageQueue() {
             if (sendChannel && sendChannel.readyState === 'open') {
                 while (messageQueue.length > 0) {
@@ -190,6 +200,18 @@
         function toggleContacts() {
             let contacts = document.getElementById('contacts');
             contacts.classList.toggle('hidden');
+        }
+
+        function loadMessages() {
+            let transaction = db.transaction(["messages"], "readonly");
+            let objectStore = transaction.objectStore("messages");
+            objectStore.openCursor().onsuccess = function(event) {
+                let cursor = event.target.result;
+                if (cursor) {
+                    displayMessage(cursor.value.text, cursor.value.sender);
+                    cursor.continue();
+                }
+            };
         }
     </script>
 </body>
