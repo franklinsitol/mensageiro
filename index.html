@@ -3,24 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1WebRTC Chat entre Abas</title>
+    <title>2WebRTC P2P sem Backend</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
         #messageInput { width: 80%; }
         #sendButton { width: 15%; }
+        textarea { width: 100%; height: 100px; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h1>Chat de Texto com WebRTC</h1>
+    <h1>Chat P2P com WebRTC (sem backend)</h1>
+    
     <div id="messages"></div>
     <input type="text" id="messageInput" placeholder="Digite sua mensagem..." />
     <button id="sendButton" disabled>Enviar</button>
+
+    <h2>Troca de Ofertas e Respostas</h2>
+    <div>
+        <h3>Oferta</h3>
+        <textarea id="offer" readonly></textarea>
+        <button id="createOffer">Criar Oferta</button>
+    </div>
+
+    <div>
+        <h3>Resposta</h3>
+        <textarea id="answer"></textarea>
+        <button id="setAnswer">Definir Resposta</button>
+    </div>
 
     <script>
         const messagesDiv = document.getElementById("messages");
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
+
+        const offerTextarea = document.getElementById("offer");
+        const answerTextarea = document.getElementById("answer");
+        const createOfferButton = document.getElementById("createOffer");
+        const setAnswerButton = document.getElementById("setAnswer");
 
         let localConnection;
         let remoteConnection;
@@ -34,9 +54,8 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem para a última mensagem
         }
 
-        // Inicia a conexão WebRTC
-        function startConnection() {
-            // Cria a conexão RTCPeerConnection
+        // Função para criar uma oferta
+        createOfferButton.onclick = () => {
             localConnection = new RTCPeerConnection();
 
             // Cria o dataChannel no lado ofertante
@@ -45,85 +64,47 @@
             // Quando o dataChannel local estiver aberto, habilita o botão de enviar
             dataChannel.onopen = () => {
                 console.log("Canal de dados aberto");
-                sendButton.disabled = false; // Habilita o botão de envio
+                sendButton.disabled = false;
             };
 
             dataChannel.onclose = () => {
                 console.log("Canal de dados fechado");
-                sendButton.disabled = true; // Desabilita o botão de envio
+                sendButton.disabled = true;
             };
 
-            // Escuta mensagens recebidas
             dataChannel.onmessage = (event) => {
                 addMessage("Outro: " + event.data);
             };
 
-            // Gerencia candidatos ICE
             localConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    sendSignal({ candidate: event.candidate });
+                    console.log("Candidato ICE gerado:", event.candidate);
                 }
             };
 
-            // Função de sinalização via localStorage
-            window.addEventListener("storage", (event) => {
-                if (event.key === "signal") {
-                    const signal = JSON.parse(event.newValue);
-                    handleSignal(signal);
-                }
-            });
-
-            // Cria e envia a oferta
+            // Cria a oferta
             localConnection.createOffer()
                 .then(offer => localConnection.setLocalDescription(offer))
-                .then(() => sendSignal(localConnection.localDescription));
-        }
+                .then(() => {
+                    offerTextarea.value = JSON.stringify(localConnection.localDescription); // Exibe a oferta no campo de texto
+                });
+        };
 
-        // Lado remoto: recebe oferta, cria data channel
-        function handleSignal(signal) {
-            if (!remoteConnection) {
-                // Conexão RTCPeerConnection remota
-                remoteConnection = new RTCPeerConnection();
+        // Função para lidar com a resposta
+        setAnswerButton.onclick = () => {
+            const answer = JSON.parse(answerTextarea.value);
+            localConnection.setRemoteDescription(answer);
+        };
 
-                // Cria dataChannel quando recebido
-                remoteConnection.ondatachannel = (event) => {
-                    const receiveChannel = event.channel;
-                    receiveChannel.onopen = () => {
-                        console.log("Canal de dados (remoto) aberto");
-                        sendButton.disabled = false; // Habilita o botão de envio
-                    };
-                    receiveChannel.onmessage = (event) => addMessage("Outro: " + event.data);
-                    dataChannel = receiveChannel;
-                };
-
-                remoteConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        sendSignal({ candidate: event.candidate });
-                    }
-                };
+        // Quando receber a resposta, configura a conexão
+        answerTextarea.addEventListener("input", () => {
+            if (answerTextarea.value.trim() !== "") {
+                const answer = JSON.parse(answerTextarea.value);
+                localConnection.setRemoteDescription(answer);
             }
+        });
 
-            if (signal.type === "offer") {
-                remoteConnection.setRemoteDescription(signal)
-                    .then(() => remoteConnection.createAnswer())
-                    .then(answer => remoteConnection.setLocalDescription(answer))
-                    .then(() => sendSignal(remoteConnection.localDescription));
-            } else if (signal.type === "answer") {
-                localConnection.setRemoteDescription(signal);
-            } else if (signal.candidate) {
-                const candidate = new RTCIceCandidate(signal.candidate);
-                localConnection.addIceCandidate(candidate);
-                remoteConnection.addIceCandidate(candidate);
-            }
-        }
-
-        // Função para enviar sinalização usando localStorage
-        function sendSignal(signal) {
-            localStorage.setItem("signal", JSON.stringify(signal));
-            localStorage.removeItem("signal"); // Limpa o item logo após enviar
-        }
-
-        // Envia mensagens
+        // Função para enviar mensagens de texto
         sendButton.onclick = () => {
             const message = messageInput.value;
             if (message && dataChannel.readyState === "open") {
@@ -132,9 +113,6 @@
                 messageInput.value = ""; // Limpa o campo de entrada
             }
         };
-
-        // Inicia a conexão ao carregar a página
-        startConnection();
     </script>
 </body>
 </html>
