@@ -3,44 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat P2P com PeerJS</title>
+    <title>Chat P2P com Gun</title>
+    <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
         #messageInput { width: 80%; }
         #sendButton { width: 15%; }
-        #peerIdDisplay { margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>Chat P2P com PeerJS</h1>
-
-    <div id="peerIdDisplay">Seu ID do Peer: <span id="peerId"></span></div>
-    <button id="generateIdButton">Gerar Novo ID</button>
-    
-    <div>
-        <label for="connectId">ID do Peer para conectar:</label>
-        <input type="text" id="connectId" placeholder="Digite o ID do peer" />
-        <button id="connectButton">Conectar</button>
-    </div>
+    <h1>Chat P2P com Gun</h1>
 
     <div id="messages"></div>
-    <input type="text" id="messageInput" placeholder="Digite sua mensagem..." disabled />
-    <button id="sendButton" disabled>Enviar</button>
+    <input type="text" id="messageInput" placeholder="Digite sua mensagem..." />
+    <button id="sendButton">Enviar</button>
 
-    <script src="https://cdn.peerjs.com/peerjs.min.js"></script>
     <script>
         const messagesDiv = document.getElementById("messages");
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
-        const connectButton = document.getElementById("connectButton");
-        const generateIdButton = document.getElementById("generateIdButton");
-        const peerIdDisplay = document.getElementById("peerId");
 
-        let peer; // Variável para armazenar o objeto peer
-        let conn; // Variável para armazenar a conexão ativa
+        // Inicializa o Gun
+        const gun = Gun();
 
-        // Função para adicionar mensagens ao chat
+        // Adiciona uma mensagem à interface
         function addMessage(message) {
             const messageElement = document.createElement("div");
             messageElement.textContent = message;
@@ -48,59 +35,21 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem para a última mensagem
         }
 
-        // Gera um novo Peer
-        function createPeer() {
-            peer = new Peer();
-
-            // Quando o peer é criado, exibe o ID do peer
-            peer.on('open', (id) => {
-                peerIdDisplay.querySelector("#peerId").textContent = id; // Exibe o ID do peer
-                addMessage("Seu ID do Peer: " + id);
-            });
-
-            // Quando uma nova conexão é recebida
-            peer.on('connection', (newConn) => {
-                conn = newConn; // Armazena a nova conexão
-                conn.on('data', (data) => {
-                    addMessage("Outro: " + data);
-                });
-            });
-        }
-
-        // Gera um novo ID ao clicar no botão
-        generateIdButton.onclick = () => {
-            createPeer();
-            messageInput.disabled = true; // Desabilita o campo de mensagem até a conexão
-            sendButton.disabled = true; // Desabilita o botão de enviar até a conexão
-        };
-
-        // Conecta a um peer existente
-        connectButton.onclick = () => {
-            const peerId = document.getElementById("connectId").value;
-            if (peerId && peer) {
-                conn = peer.connect(peerId); // Estabelece a conexão
-                conn.on('open', () => {
-                    addMessage("Conectado ao peer: " + peerId);
-                    messageInput.disabled = false;
-                    sendButton.disabled = false;
-
-                    // Recebe mensagens do peer
-                    conn.on('data', (data) => {
-                        addMessage("Outro: " + data);
-                    });
-                });
-            }
-        };
-
         // Envio de mensagem
         sendButton.onclick = () => {
             const message = messageInput.value;
-            if (message && conn) {
-                conn.send(message); // Envia a mensagem
-                addMessage("Você: " + message);
+            if (message) {
+                gun.get('chat').set({ text: message, timestamp: Date.now() }); // Armazena a mensagem no Gun
                 messageInput.value = ""; // Limpa o campo de entrada
             }
         };
+
+        // Recebe mensagens do Gun
+        gun.get('chat').on(data => {
+            if (data) {
+                addMessage(data.text); // Adiciona a mensagem à interface
+            }
+        });
     </script>
 </body>
 </html>
