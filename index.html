@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Text Chat</title>
+    <title>5WebRTC Text Chat</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
@@ -15,7 +15,7 @@
     <div id="userCount">Usuários conectados: <span id="count">0</span></div>
     <div id="messages"></div>
     <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
-    <button id="sendButton">Enviar</button>
+    <button id="sendButton" disabled>Enviar</button>
 
     <script>
         const messagesDiv = document.getElementById("messages");
@@ -23,9 +23,8 @@
         const sendButton = document.getElementById("sendButton");
         const userCount = document.getElementById("count");
 
-        const localConnection = new RTCPeerConnection();
-        const dataChannel = localConnection.createDataChannel("chat");
-
+        let localConnection;
+        let dataChannel;
         let userCountValue = 0;
 
         // Função para adicionar mensagens ao chat
@@ -35,21 +34,6 @@
             messagesDiv.appendChild(messageElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rolagem automática
         }
-
-        // Recebe mensagens do outro peer
-        dataChannel.onmessage = (event) => {
-            addMessage("Outro: " + event.data);
-        };
-
-        // Envia mensagens quando o botão é clicado
-        sendButton.onclick = () => {
-            const message = messageInput.value;
-            if (message) {
-                dataChannel.send(message);
-                addMessage("Você: " + message);
-                messageInput.value = ""; // Limpa o campo de entrada
-            }
-        };
 
         // Atualiza o contador de usuários
         function updateUserCount() {
@@ -76,6 +60,25 @@
 
         // Função para criar uma nova conexão
         async function startConnection() {
+            localConnection = new RTCPeerConnection();
+
+            // Gerencia candidatos ICE
+            localConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    sendSignal({ candidate: event.candidate });
+                }
+            };
+
+            // Criar o data channel
+            dataChannel = localConnection.createDataChannel("chat");
+            dataChannel.onopen = () => {
+                console.log("Canal de dados aberto!");
+                sendButton.disabled = false; // Habilita o botão enviar quando o canal de dados estiver aberto
+            };
+            dataChannel.onmessage = (event) => {
+                addMessage("Outro: " + event.data);
+            };
+
             const offer = await localConnection.createOffer();
             await localConnection.setLocalDescription(offer);
             sendSignal(offer);
@@ -87,12 +90,15 @@
             localStorage.removeItem('signal'); // Remove para evitar repetição
         }
 
-        // Inicia a conexão
-        startConnection();
-
-        // Atualiza o contador ao iniciar a página
-        userCountValue = parseInt(localStorage.getItem('userCount')) || 0;
-        updateUserCount();
+        // Envia mensagens quando o botão é clicado
+        sendButton.onclick = () => {
+            const message = messageInput.value;
+            if (message && dataChannel.readyState === "open") {
+                dataChannel.send(message);
+                addMessage("Você: " + message);
+                messageInput.value = ""; // Limpa o campo de entrada
+            }
+        };
 
         // Escuta mudanças no localStorage
         window.addEventListener('storage', (event) => {
@@ -105,12 +111,12 @@
             }
         });
 
-        // Gerencia candidatos ICE
-        localConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                sendSignal({ candidate: event.candidate });
-            }
-        };
+        // Atualiza o contador ao iniciar a página
+        userCountValue = parseInt(localStorage.getItem('userCount')) || 0;
+        updateUserCount();
+
+        // Inicia a conexão
+        startConnection();
 
         // Atualiza o contador de usuários ao fechar a aba
         window.addEventListener('beforeunload', () => {
