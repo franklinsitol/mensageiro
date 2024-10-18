@@ -1,170 +1,77 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5Chat WebRTC</title>
+    <title>WebRTC Text Chat</title>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }
-        #chat-container { width: 90%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; }
-        .message { margin: 10px 0; padding: 10px; border-radius: 5px; background: #e0e0e0; }
-        .my-message { background: #0084ff; color: white; }
-        #input-container { display: flex; border-top: 1px solid #ddd; }
-        #message-input { flex: 1; padding: 10px; border: none; outline: none; }
-        #send-button { padding: 10px; background: #0084ff; border: none; color: white; cursor: pointer; }
-        .floating-button { position: fixed; bottom: 20px; right: 20px; background: #0084ff; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .hidden { display: none; }
-        #contacts { padding: 20px; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 10px; width: 90%; max-width: 400px; z-index: 100; }
-        button { margin-top: 10px; padding: 10px; width: 100%; border: none; border-radius: 5px; cursor: pointer; }
-        #create-offer { background: #0084ff; color: white; }
-        #create-answer { background: #00aaff; color: white; }
-        #set-answer { background: #0077aa; color: white; }
-        textarea { width: 100%; height: 80px; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        body { font-family: Arial, sans-serif; }
+        #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
+        #messageInput { width: 80%; }
     </style>
 </head>
 <body>
-    <div id="chat-container">
-        <div id="messages"></div>
-        <div id="input-container">
-            <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-            <button id="send-button" onclick="sendMessage()">Enviar</button>
-        </div>
-    </div>
-    <button class="floating-button" onclick="toggleContacts()">⚙️</button>
-    <div id="contacts" class="hidden">
-        <input type="text" id="contact-name" placeholder="Nome do contato">
-        <button id="create-offer" onclick="createOffer()">Criar Oferta</button>
-        <textarea id="offer" placeholder="Oferta SDP"></textarea>
-        <textarea id="answer" placeholder="Resposta SDP"></textarea>
-        <button id="create-answer" onclick="createAnswer()">Criar Resposta</button>
-        <button id="set-answer" onclick="setAnswer()">Definir Resposta</button>
-        <button id="join-call" onclick="joinCall()">Entrar na chamada</button>
-    </div>
+    <h1>Chat de Texto com WebRTC</h1>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+    <button id="sendButton">Enviar</button>
 
     <script>
-        let messagesContainer = document.getElementById('messages');
-        let offerTextarea = document.getElementById('offer');
-        let answerTextarea = document.getElementById('answer');
-        let localConnection;
-        let remoteConnection;
-        let sendChannel;
-        let receiveChannel;
-        let messageQueue = [];
+        const messagesDiv = document.getElementById("messages");
+        const messageInput = document.getElementById("messageInput");
+        const sendButton = document.getElementById("sendButton");
 
-        // Função para criar uma oferta e gerar a URL
-        function createOffer() {
-            localConnection = new RTCPeerConnection();
-            sendChannel = localConnection.createDataChannel("sendChannel");
-            setupSendChannel(sendChannel);
+        const localConnection = new RTCPeerConnection();
+        const dataChannel = localConnection.createDataChannel("chat");
 
-            localConnection.onicecandidate = e => {
-                if (!e.candidate) {
-                    let offer = JSON.stringify(localConnection.localDescription);
-                    offerTextarea.value = offer;
-                    const url = `${window.location.href}?offer=${encodeURIComponent(offer)}`;
-                    prompt("Compartilhe esta URL com o outro dispositivo:", url);
+        // Função para adicionar mensagens ao chat
+        function addMessage(message) {
+            const messageElement = document.createElement("div");
+            messageElement.textContent = message;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rolagem automática
+        }
+
+        // Recebe mensagens do outro peer
+        dataChannel.onmessage = (event) => {
+            addMessage("Outro: " + event.data);
+        };
+
+        // Envia mensagens quando o botão é clicado
+        sendButton.onclick = () => {
+            const message = messageInput.value;
+            dataChannel.send(message);
+            addMessage("Você: " + message);
+            messageInput.value = ""; // Limpa o campo de entrada
+        };
+
+        // Função para criar uma oferta e conectar
+        async function startConnection() {
+            const offer = await localConnection.createOffer();
+            await localConnection.setLocalDescription(offer);
+            console.log("Offer: ", offer);
+            sendSignal(offer); // Envia a oferta via sinalização simulada
+
+            // Espera pela resposta do outro peer
+            window.addEventListener('storage', async (event) => {
+                if (event.key === 'signal' && event.newValue) {
+                    const answer = JSON.parse(event.newValue);
+                    await localConnection.setRemoteDescription(answer);
+                    const answerOffer = await localConnection.createAnswer();
+                    await localConnection.setLocalDescription(answerOffer);
+                    sendSignal(answerOffer); // Envia a resposta via sinalização simulada
                 }
-            };
-
-            localConnection.createOffer()
-                .then(o => localConnection.setLocalDescription(o));
+            });
         }
 
-        // Configura o canal de envio e recebe mensagens
-        function setupSendChannel(channel) {
-            channel.onopen = () => flushMessageQueue();
-            channel.onclose = () => console.log("Canal de dados fechado");
-            channel.onmessage = e => displayMessage(e.data, "Contato");
+        // Função para enviar sinalizações usando localStorage
+        function sendSignal(signal) {
+            localStorage.setItem('signal', JSON.stringify(signal));
+            localStorage.removeItem('signal'); // Remove para evitar repetição
         }
 
-        // Função para entrar em uma chamada usando a oferta fornecida na URL
-        function joinCall() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const offer = urlParams.get('offer');
-            if (offer) {
-                remoteConnection = new RTCPeerConnection();
-                remoteConnection.ondatachannel = e => {
-                    receiveChannel = e.channel;
-                    setupSendChannel(receiveChannel);
-                };
-
-                remoteConnection.onicecandidate = e => {
-                    if (!e.candidate) {
-                        answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
-                    }
-                };
-
-                remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(decodeURIComponent(offer))))
-                    .then(() => remoteConnection.createAnswer())
-                    .then(a => remoteConnection.setLocalDescription(a));
-            }
-        }
-
-        function createAnswer() {
-            remoteConnection = new RTCPeerConnection();
-            remoteConnection.ondatachannel = e => {
-                receiveChannel = e.channel;
-                setupSendChannel(receiveChannel);
-            };
-
-            remoteConnection.onicecandidate = e => {
-                if (!e.candidate) {
-                    answerTextarea.value = JSON.stringify(remoteConnection.localDescription);
-                }
-            };
-
-            remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerTextarea.value)))
-                .then(() => remoteConnection.createAnswer())
-                .then(a => remoteConnection.setLocalDescription(a));
-        }
-
-        function setAnswer() {
-            let answer = JSON.parse(answerTextarea.value);
-            localConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        }
-
-        function sendMessage() {
-            let input = document.getElementById('message-input');
-            if (input.value.trim() === "") return;
-
-            let message = {
-                text: input.value,
-                timestamp: Date.now(),
-                sender: "Eu"
-            };
-
-            messageQueue.push(message);
-            displayMessage(message.text, message.sender);
-            flushMessageQueue();
-            input.value = '';
-        }
-
-        function flushMessageQueue() {
-            if (sendChannel && sendChannel.readyState === 'open') {
-                while (messageQueue.length > 0) {
-                    let message = messageQueue.shift();
-                    sendChannel.send(message.text);
-                    console.log("Mensagem enviada:", message.text);
-                }
-            }
-        }
-
-        function displayMessage(message, sender) {
-            let messageDiv = document.createElement('div');
-            messageDiv.classList.add('message');
-            if (sender === "Eu") {
-                messageDiv.classList.add('my-message');
-            }
-            messageDiv.textContent = `${sender}: ${message}`;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        function toggleContacts() {
-            let contacts = document.getElementById('contacts');
-            contacts.classList.toggle('hidden');
-        }
+        // Inicia a conexão
+        startConnection();
     </script>
 </body>
 </html>
