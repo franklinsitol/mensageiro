@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2WebRTC Text Chat</title>
+    <title>WebRTC Text Chat</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
@@ -12,6 +12,7 @@
 </head>
 <body>
     <h1>Chat de Texto com WebRTC</h1>
+    <div id="userCount">Usuários conectados: <span id="count">0</span></div>
     <div id="messages"></div>
     <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
     <button id="sendButton">Enviar</button>
@@ -20,9 +21,12 @@
         const messagesDiv = document.getElementById("messages");
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
+        const userCount = document.getElementById("count");
 
         const localConnection = new RTCPeerConnection();
         const dataChannel = localConnection.createDataChannel("chat");
+
+        let userCountValue = 0;
 
         // Função para adicionar mensagens ao chat
         function addMessage(message) {
@@ -46,6 +50,13 @@
                 messageInput.value = ""; // Limpa o campo de entrada
             }
         };
+
+        // Atualiza o contador de usuários
+        function updateUserCount() {
+            userCountValue++;
+            localStorage.setItem('userCount', userCountValue);
+            userCount.textContent = userCountValue;
+        }
 
         // Função para lidar com a sinalização
         function handleSignal(signal) {
@@ -79,11 +90,18 @@
         // Inicia a conexão
         startConnection();
 
+        // Atualiza o contador ao iniciar a página
+        userCountValue = parseInt(localStorage.getItem('userCount')) || 0;
+        updateUserCount();
+
         // Escuta mudanças no localStorage
         window.addEventListener('storage', (event) => {
             if (event.key === 'signal' && event.newValue) {
                 const signal = JSON.parse(event.newValue);
                 handleSignal(signal);
+            } else if (event.key === 'userCount') {
+                userCountValue = parseInt(event.newValue) || 0;
+                userCount.textContent = userCountValue;
             }
         });
 
@@ -93,6 +111,13 @@
                 sendSignal({ candidate: event.candidate });
             }
         };
+
+        // Atualiza o contador de usuários ao fechar a aba
+        window.addEventListener('beforeunload', () => {
+            userCountValue--;
+            localStorage.setItem('userCount', userCountValue);
+            localStorage.removeItem('userCount'); // Remove para evitar repetição
+        });
     </script>
 </body>
 </html>
