@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Messenger with QR Code</title>
+    <title>P2P Messenger with QR Code 01</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.3.1/dist/jsQR.js"></script>
     <style>
@@ -84,7 +84,6 @@
 
     <script>
         let peerConnections = {}; // Armazena múltiplas conexões P2P
-        let localConnection;
         let dataChannel;
         let qrCodeDiv = document.getElementById('qrcode');
         let video = document.getElementById('video');
@@ -101,7 +100,7 @@
         // Inicializa uma nova conexão WebRTC e gera QR Code para a oferta SDP
         function createNewConnection() {
             const peerConnection = new RTCPeerConnection();
-            const dataChannel = peerConnection.createDataChannel("chat");
+            dataChannel = peerConnection.createDataChannel("chat");
 
             dataChannel.onmessage = function(event) {
                 appendMessage(event.data, 'received');
@@ -153,7 +152,10 @@
 
         // Limpa o SDP removendo linhas inválidas
         function cleanSDP(sdp) {
-            return sdp.split('\n').filter(line => !line.includes('a=max-message-size')).join('\n');
+            // Remove linhas não suportadas do SDP
+            return sdp.split('\n').filter(line => {
+                return !line.includes('a=max-message-size') && !line.includes('a=sctp-port');
+            }).join('\n');
         }
 
         // Escaneia o QR Code usando a câmera e processa a resposta SDP
@@ -222,7 +224,7 @@
         function sendMessage() {
             const message = chatInput.value;
             appendMessage(message, 'sent');
-            Object.values(peerConnections).forEach(({ peerConnection, dataChannel }) => {
+            Object.values(peerConnections).forEach(({ peerConnection }) => {
                 if (dataChannel && dataChannel.readyState === 'open') {
                     dataChannel.send(message);
                 }
@@ -234,7 +236,7 @@
         function appendMessage(message, type) {
             const messageDiv = document.createElement('div');
             messageDiv.textContent = message;
-            messageDiv.classList.add(type === 'sent' ? 'sent-message' : 'received-message');
+            messageDiv.className = type === 'sent' ? 'sent-message' : 'received-message';
             chatWindow.appendChild(messageDiv);
             chatWindow.scrollTop = chatWindow.scrollHeight; // Rolagem para baixo
         }
