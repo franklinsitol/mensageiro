@@ -37,7 +37,8 @@
         const generateIdButton = document.getElementById("generateIdButton");
         const peerIdDisplay = document.getElementById("peerId");
 
-        let peer;
+        let peer; // Variável para armazenar o objeto peer
+        let conn; // Variável para armazenar a conexão ativa
 
         // Função para adicionar mensagens ao chat
         function addMessage(message) {
@@ -50,13 +51,16 @@
         // Gera um novo Peer
         function createPeer() {
             peer = new Peer();
+
+            // Quando o peer é criado, exibe o ID do peer
             peer.on('open', (id) => {
                 peerIdDisplay.querySelector("#peerId").textContent = id; // Exibe o ID do peer
                 addMessage("Seu ID do Peer: " + id);
             });
 
-            // Recebe mensagens do peer
-            peer.on('connection', (conn) => {
+            // Quando uma nova conexão é recebida
+            peer.on('connection', (newConn) => {
+                conn = newConn; // Armazena a nova conexão
                 conn.on('data', (data) => {
                     addMessage("Outro: " + data);
                 });
@@ -74,7 +78,7 @@
         connectButton.onclick = () => {
             const peerId = document.getElementById("connectId").value;
             if (peerId && peer) {
-                const conn = peer.connect(peerId);
+                conn = peer.connect(peerId); // Estabelece a conexão
                 conn.on('open', () => {
                     addMessage("Conectado ao peer: " + peerId);
                     messageInput.disabled = false;
@@ -91,13 +95,10 @@
         // Envio de mensagem
         sendButton.onclick = () => {
             const message = messageInput.value;
-            if (message && peer) {
-                const conn = peer.connections[Object.keys(peer.connections)[0]][0]; // Pega a conexão ativa
-                if (conn) {
-                    conn.send(message);
-                    addMessage("Você: " + message);
-                    messageInput.value = ""; // Limpa o campo de entrada
-                }
+            if (message && conn) {
+                conn.send(message); // Envia a mensagem
+                addMessage("Você: " + message);
+                messageInput.value = ""; // Limpa o campo de entrada
             }
         };
     </script>
