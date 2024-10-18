@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat P2P com WebRTC</title>
+    <title>0Chat P2P com WebRTC</title>
     <style>
-        body { font-family: Arial, sans-serif; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
-        #messageInput { width: 80%; }
-        #sendButton { width: 15%; }
-        #offerInput, #answerInput { width: 100%; margin-top: 10px; height: 50px; }
+        #messageInput { width: 80%; padding: 10px; }
+        #sendButton { width: 15%; padding: 10px; }
+        #offerInput, #answerInput { width: 100%; margin-top: 10px; height: 50px; padding: 10px; }
         .step { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
         .step.completed { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
         .step.in-progress { background-color: #fff3cd; border-color: #ffeeba; color: #856404; }
@@ -32,7 +32,7 @@
     </div>
 
     <h4>Oferta</h4>
-    <textarea id="offerInput" placeholder="Cole a oferta aqui (se houver)" readonly></textarea>
+    <textarea id="offerInput" placeholder="Cole a oferta aqui (se houver)"></textarea>
     <button id="createOfferButton">Criar Oferta</button>
 
     <h4>Resposta</h4>
