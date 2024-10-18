@@ -16,6 +16,8 @@
     <h1>Chat P2P com PeerJS</h1>
 
     <div id="peerIdDisplay">Seu ID do Peer: <span id="peerId"></span></div>
+    <button id="generateIdButton">Gerar Novo ID</button>
+    
     <div>
         <label for="connectId">ID do Peer para conectar:</label>
         <input type="text" id="connectId" placeholder="Digite o ID do peer" />
@@ -32,10 +34,10 @@
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
         const connectButton = document.getElementById("connectButton");
+        const generateIdButton = document.getElementById("generateIdButton");
         const peerIdDisplay = document.getElementById("peerId");
 
-        // Cria um novo peer
-        const peer = new Peer();
+        let peer;
 
         // Função para adicionar mensagens ao chat
         function addMessage(message) {
@@ -45,10 +47,33 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem para a última mensagem
         }
 
-        // Recebe o ID do peer e se conecta a ele
+        // Gera um novo Peer
+        function createPeer() {
+            peer = new Peer();
+            peer.on('open', (id) => {
+                peerIdDisplay.querySelector("#peerId").textContent = id; // Exibe o ID do peer
+                addMessage("Seu ID do Peer: " + id);
+            });
+
+            // Recebe mensagens do peer
+            peer.on('connection', (conn) => {
+                conn.on('data', (data) => {
+                    addMessage("Outro: " + data);
+                });
+            });
+        }
+
+        // Gera um novo ID ao clicar no botão
+        generateIdButton.onclick = () => {
+            createPeer();
+            messageInput.disabled = true; // Desabilita o campo de mensagem até a conexão
+            sendButton.disabled = true; // Desabilita o botão de enviar até a conexão
+        };
+
+        // Conecta a um peer existente
         connectButton.onclick = () => {
             const peerId = document.getElementById("connectId").value;
-            if (peerId) {
+            if (peerId && peer) {
                 const conn = peer.connect(peerId);
                 conn.on('open', () => {
                     addMessage("Conectado ao peer: " + peerId);
@@ -66,7 +91,7 @@
         // Envio de mensagem
         sendButton.onclick = () => {
             const message = messageInput.value;
-            if (message) {
+            if (message && peer) {
                 const conn = peer.connections[Object.keys(peer.connections)[0]][0]; // Pega a conexão ativa
                 if (conn) {
                     conn.send(message);
@@ -75,12 +100,6 @@
                 }
             }
         };
-
-        // Quando o peer é criado, exibe o ID do peer
-        peer.on('open', (id) => {
-            peerIdDisplay.querySelector("#peerId").textContent = id; // Exibe o ID do peer
-            addMessage("Seu ID do Peer: " + id);
-        });
     </script>
 </body>
 </html>
