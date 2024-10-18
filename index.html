@@ -54,6 +54,11 @@
         <div class="qrcode" id="qrcode"></div>
         <textarea id="sdpOffer" readonly style="width:100%; margin-top: 10px;"></textarea>
         <button onclick="copySDP()">Copy SDP</button>
+        
+        <!-- New Field for Pasting SDP -->
+        <h4>Paste Remote SDP</h4>
+        <textarea id="sdpPaste" style="width:100%; margin-top: 10px;"></textarea>
+        <button onclick="connectUsingSDP()">Connect</button>
     </div>
 
     <div class="chat">
@@ -86,6 +91,7 @@
         const chatInput = document.getElementById('chatInput');
         const contactList = document.getElementById('contactList');
         const sdpOfferTextarea = document.getElementById('sdpOffer');
+        const sdpPasteTextarea = document.getElementById('sdpPaste');
 
         // Load contacts from IndexedDB on page load
         window.onload = function() {
@@ -131,6 +137,16 @@
             sdpOfferTextarea.select();
             document.execCommand('copy');
             alert("SDP copied to clipboard!");
+        }
+
+        // Paste SDP manually and establish a connection
+        function connectUsingSDP() {
+            const sdp = sdpPasteTextarea.value.trim();
+            if (!sdp) {
+                alert("Please paste a valid SDP");
+                return;
+            }
+            handleScannedSDP(sdp); // Use the pasted SDP
         }
 
         // Scan QR Code using camera and process SDP answer
@@ -239,9 +255,7 @@
                 };
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
-                    if (!db.objectStoreNames.contains('contacts')) {
-                        db.createObjectStore('contacts', { keyPath: 'id' });
-                    }
+                    db.createObjectStore('contacts', { keyPath: 'id' });
                 };
             });
         }
