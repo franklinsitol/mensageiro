@@ -83,11 +83,9 @@
     </div>
 
     <script>
-        let peerConnections = {}; // Store multiple peer connections
+        let peerConnections = {}; // Armazena múltiplas conexões P2P
         let localConnection;
-        let remoteConnection;
         let dataChannel;
-        let contacts = [];
         let qrCodeDiv = document.getElementById('qrcode');
         let video = document.getElementById('video');
         let canvas = document.getElementById('canvas');
@@ -96,12 +94,11 @@
 
         const chatWindow = document.getElementById('chatWindow');
         const chatInput = document.getElementById('chatInput');
-        const contactList = document.getElementById('contactList');
         const sdpOfferTextarea = document.getElementById('sdpOffer');
         const sdpPasteTextarea = document.getElementById('sdpPaste');
-        const statusMessage = document.getElementById('statusMessage'); // Message for connection status
+        const statusMessage = document.getElementById('statusMessage'); // Mensagem de status da conexão
 
-        // Initialize a new WebRTC connection and generate QR Code for SDP offer
+        // Inicializa uma nova conexão WebRTC e gera QR Code para a oferta SDP
         function createNewConnection() {
             const peerConnection = new RTCPeerConnection();
             const dataChannel = peerConnection.createDataChannel("chat");
@@ -112,20 +109,19 @@
 
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    // Handle ICE candidate exchange if needed
+                    // Gerenciar a troca de ICE candidates se necessário
                 }
             };
 
             peerConnection.createOffer().then(offer => {
-                peerConnection.setLocalDescription(offer);
-                generateQRCode(offer.sdp);
-                sdpOfferTextarea.value = offer.sdp; // Show the SDP in textarea for copying
+                return peerConnection.setLocalDescription(offer).then(() => {
+                    generateQRCode(offer.sdp);
+                    sdpOfferTextarea.value = offer.sdp; // Exibe o SDP na textarea para copiar
+                });
             });
-
-            peerConnections['newPeer'] = { peerConnection, dataChannel };
         }
 
-        // Generate QR Code for SDP offer
+        // Gera QR Code para a oferta SDP
         function generateQRCode(sdp) {
             qrCodeDiv.innerHTML = '';
             new QRCode(qrCodeDiv, {
@@ -135,14 +131,14 @@
             });
         }
 
-        // Copy SDP to clipboard
+        // Copia SDP para a área de transferência
         function copySDP() {
             sdpOfferTextarea.select();
             document.execCommand('copy');
             alert("SDP copied to clipboard!");
         }
 
-        // Paste SDP manually and establish a connection
+        // Cola SDP manualmente e estabelece uma conexão
         function connectUsingSDP() {
             const sdp = sdpPasteTextarea.value.trim();
             if (!sdp) {
@@ -150,17 +146,17 @@
                 return;
             }
 
-            // Clean SDP of any invalid lines
+            // Limpa o SDP de qualquer linha inválida
             const cleanedSDP = cleanSDP(sdp);
-            handleScannedSDP(cleanedSDP); // Use the cleaned SDP
+            handleScannedSDP(cleanedSDP); // Usa o SDP limpo
         }
 
-        // Clean the SDP by removing invalid lines like "a=max-message-size"
+        // Limpa o SDP removendo linhas inválidas
         function cleanSDP(sdp) {
             return sdp.split('\n').filter(line => !line.includes('a=max-message-size')).join('\n');
         }
 
-        // Scan QR Code using camera and process SDP answer
+        // Escaneia o QR Code usando a câmera e processa a resposta SDP
         function scanQRCode() {
             scanning = true;
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream) {
@@ -176,16 +172,16 @@
             let qrCode = jsQR(imageData.data, imageData.width, imageData.height);
 
             if (qrCode) {
-                handleScannedSDP(cleanSDP(qrCode.data)); // Process the cleaned SDP once detected
-                scanning = false; // Stop scanning after success
-                video.srcObject.getTracks().forEach(track => track.stop()); // Stop the video stream
+                handleScannedSDP(cleanSDP(qrCode.data)); // Processa o SDP limpo assim que detectado
+                scanning = false; // Para de escanear após sucesso
+                video.srcObject.getTracks().forEach(track => track.stop()); // Para o stream de vídeo
                 alert("QR Code scanned successfully!");
             } else {
-                requestAnimationFrame(scanLoop); // Keep scanning if not detected
+                requestAnimationFrame(scanLoop); // Continua escaneando se não detectado
             }
         }
 
-        // Handle scanned or pasted SDP data
+        // Trata dados SDP escaneados ou colados
         function handleScannedSDP(sdp) {
             const peerConnection = createConnection('scannedPeer');
             peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }))
@@ -193,17 +189,19 @@
                     return peerConnection.createAnswer();
                 })
                 .then(answer => {
-                    peerConnection.setLocalDescription(answer);
-                    statusMessage.textContent = "Connection established successfully!"; // Success message
-                    statusMessage.style.color = "green"; // Set color to green for success
+                    return peerConnection.setLocalDescription(answer);
+                })
+                .then(() => {
+                    statusMessage.textContent = "Connection established successfully!"; // Mensagem de sucesso
+                    statusMessage.style.color = "green"; // Define a cor como verde para sucesso
                 })
                 .catch(error => {
                     statusMessage.textContent = "Failed to connect: " + error;
-                    statusMessage.style.color = "red"; // Set color to red for errors
+                    statusMessage.style.color = "red"; // Define a cor como vermelho para erros
                 });
         }
 
-        // Create a new RTCPeerConnection
+        // Cria uma nova RTCPeerConnection
         function createConnection(id) {
             const peerConnection = new RTCPeerConnection();
             peerConnection.ondatachannel = (event) => {
@@ -213,14 +211,14 @@
             };
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    // Handle ICE candidate exchange if needed
+                    // Gerenciar a troca de ICE candidates se necessário
                 }
             };
             peerConnections[id] = { peerConnection };
             return peerConnection;
         }
 
-        // Send message to connected peers
+        // Envia mensagem para os peers conectados
         function sendMessage() {
             const message = chatInput.value;
             appendMessage(message, 'sent');
@@ -232,13 +230,13 @@
             chatInput.value = '';
         }
 
-        // Append message to chat window
+        // Adiciona a mensagem na janela de chat
         function appendMessage(message, type) {
             const messageDiv = document.createElement('div');
             messageDiv.textContent = message;
             messageDiv.classList.add(type === 'sent' ? 'sent-message' : 'received-message');
             chatWindow.appendChild(messageDiv);
-            chatWindow.scrollTop = chatWindow.scrollHeight; // Auto scroll to bottom
+            chatWindow.scrollTop = chatWindow.scrollHeight; // Rolagem para baixo
         }
     </script>
 </body>
