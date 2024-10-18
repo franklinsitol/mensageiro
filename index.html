@@ -10,6 +10,10 @@
         #messageInput { width: 80%; }
         #sendButton { width: 15%; }
         #offerInput, #answerInput { width: 100%; margin-top: 10px; height: 50px; }
+        .step { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .step.completed { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .step.in-progress { background-color: #fff3cd; border-color: #ffeeba; color: #856404; }
+        .step.not-started { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
     </style>
 </head>
 <body>
@@ -20,6 +24,13 @@
     <button id="sendButton">Enviar</button>
 
     <h3>Conexão</h3>
+    <div id="steps">
+        <div class="step not-started" id="step1">1. Clique em "Criar Oferta" para gerar uma oferta.</div>
+        <div class="step not-started" id="step2">2. Cole a oferta na outra aba e clique em "Conectar".</div>
+        <div class="step not-started" id="step3">3. Você verá a resposta gerada.</div>
+        <div class="step not-started" id="step4">4. Comece a enviar mensagens!</div>
+    </div>
+
     <h4>Oferta</h4>
     <textarea id="offerInput" placeholder="Cole a oferta aqui (se houver)" readonly></textarea>
     <button id="createOfferButton">Criar Oferta</button>
@@ -64,6 +75,10 @@
             const offer = await localConnection.createOffer();
             await localConnection.setLocalDescription(offer);
             offerInput.value = JSON.stringify(localConnection.localDescription); // Exibe a oferta
+
+            // Atualiza o progresso
+            updateStep(1, 'completed');
+            updateStep(2, 'in-progress');
         };
 
         // Conecta ao outro peer usando a resposta copiada
@@ -78,8 +93,13 @@
                 await remoteConnection.setLocalDescription(localAnswer);
                 
                 // Exibe a resposta gerada
-                answerInput.value = JSON.stringify(remoteConnection.localDescription);
+                answerInput.value = JSON.stringify(remoteConnection.localDescription); // Exibe a resposta
                 addMessage("Resposta gerada: " + answerInput.value); // Adiciona a resposta gerada ao chat
+
+                // Atualiza o progresso
+                updateStep(2, 'completed');
+                updateStep(3, 'completed');
+                updateStep(4, 'in-progress');
             }
         };
 
@@ -107,6 +127,12 @@
                     localConnection.addIceCandidate(e.candidate);
                 }
             };
+        }
+
+        function updateStep(stepNumber, status) {
+            const step = document.getElementById(`step${stepNumber}`);
+            step.classList.remove('not-started', 'in-progress', 'completed');
+            step.classList.add(status);
         }
     </script>
 </body>
