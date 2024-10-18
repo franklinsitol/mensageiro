@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>7WebRTC Text Chat</title>
+    <title>8WebRTC Texto</title>
     <style>
         body { font-family: Arial, sans-serif; }
         #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
@@ -13,116 +13,76 @@
 </head>
 <body>
     <h1>Chat de Texto com WebRTC</h1>
-    <div id="userCount">Usuários conectados: <span id="count">0</span></div>
     <div id="messages"></div>
-    <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+    <input type="text" id="messageInput" placeholder="Digite sua mensagem..." />
     <button id="sendButton" disabled>Enviar</button>
 
     <script>
         const messagesDiv = document.getElementById("messages");
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
-        const userCount = document.getElementById("count");
 
         let localConnection;
         let remoteConnection;
         let dataChannel;
-        let userCountValue = 0;
 
         // Função para adicionar mensagens ao chat
         function addMessage(message) {
             const messageElement = document.createElement("div");
             messageElement.textContent = message;
             messagesDiv.appendChild(messageElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rolagem automática
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem para a última mensagem
         }
 
-        // Função de diagnóstico
-        function logState() {
-            console.log("Estado da conexão local:", localConnection.iceConnectionState);
-            console.log("Estado do canal de dados:", dataChannel.readyState);
-        }
-
-        // Função para iniciar a conexão e criar o data channel
-        async function startConnection() {
+        // Inicia a conexão WebRTC
+        function startConnection() {
+            // Cria conexões RTCPeerConnection local e remota
             localConnection = new RTCPeerConnection();
+            remoteConnection = new RTCPeerConnection();
 
-            // Criação do data channel no lado "ofertante"
+            // Cria o dataChannel no lado local
             dataChannel = localConnection.createDataChannel("chat");
-            
+
+            // Configura o dataChannel no lado remoto quando ele for aberto
+            remoteConnection.ondatachannel = (event) => {
+                const receiveChannel = event.channel;
+                receiveChannel.onmessage = (event) => addMessage("Outro: " + event.data);
+            };
+
+            // Quando o dataChannel local estiver aberto, habilita o botão de enviar
             dataChannel.onopen = () => {
-                console.log("Canal de dados aberto!");
+                console.log("Canal de dados aberto");
                 sendButton.disabled = false; // Habilita o botão de envio
             };
 
-            dataChannel.onclose = () => console.log("Canal de dados fechado");
-            dataChannel.onerror = (error) => console.error("Erro no data channel:", error);
+            dataChannel.onclose = () => {
+                console.log("Canal de dados fechado");
+                sendButton.disabled = true; // Desabilita o botão de envio
+            };
 
-            // Gerencia candidatos ICE
+            // Configura ICE candidates para ambas as conexões
             localConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    sendSignal({ candidate: event.candidate });
+                    remoteConnection.addIceCandidate(event.candidate);
                 }
             };
 
-            const offer = await localConnection.createOffer();
-            await localConnection.setLocalDescription(offer);
-            sendSignal(offer);
+            remoteConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    localConnection.addIceCandidate(event.candidate);
+                }
+            };
+
+            // Cria uma oferta e define as descrições
+            localConnection.createOffer()
+                .then((offer) => localConnection.setLocalDescription(offer))
+                .then(() => remoteConnection.setRemoteDescription(localConnection.localDescription))
+                .then(() => remoteConnection.createAnswer())
+                .then((answer) => remoteConnection.setLocalDescription(answer))
+                .then(() => localConnection.setRemoteDescription(remoteConnection.localDescription));
         }
 
-        // Função para lidar com a sinalização no lado remoto
-        function handleSignal(signal) {
-            if (!remoteConnection) {
-                // Lado "respondente" da conexão cria a RTCPeerConnection
-                remoteConnection = new RTCPeerConnection();
-
-                // Escutar o canal de dados no lado remoto
-                remoteConnection.ondatachannel = (event) => {
-                    dataChannel = event.channel;
-                    
-                    dataChannel.onopen = () => {
-                        console.log("Canal de dados aberto (remoto)!");
-                        sendButton.disabled = false; // Habilita o botão de envio
-                    };
-
-                    dataChannel.onmessage = (event) => {
-                        addMessage("Outro: " + event.data);
-                    };
-
-                    dataChannel.onclose = () => console.log("Canal de dados fechado (remoto)");
-                    dataChannel.onerror = (error) => console.error("Erro no data channel (remoto):", error);
-                };
-
-                remoteConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        sendSignal({ candidate: event.candidate });
-                    }
-                };
-            }
-
-            if (signal.type === "offer") {
-                remoteConnection.setRemoteDescription(new RTCSessionDescription(signal))
-                    .then(() => remoteConnection.createAnswer())
-                    .then(answer => {
-                        remoteConnection.setLocalDescription(answer);
-                        sendSignal(answer);
-                    });
-            } else if (signal.type === "answer") {
-                localConnection.setRemoteDescription(new RTCSessionDescription(signal));
-            } else if (signal.candidate) {
-                const candidate = new RTCIceCandidate(signal);
-                localConnection.addIceCandidate(candidate).catch(console.error);
-                remoteConnection.addIceCandidate(candidate).catch(console.error);
-            }
-        }
-
-        // Função para enviar sinalizações usando localStorage
-        function sendSignal(signal) {
-            localStorage.setItem('signal', JSON.stringify(signal));
-            localStorage.removeItem('signal'); // Remove para evitar repetição
-        }
-
-        // Envia mensagens quando o botão é clicado
+        // Envio de mensagens
         sendButton.onclick = () => {
             const message = messageInput.value;
             if (message && dataChannel.readyState === "open") {
@@ -132,27 +92,8 @@
             }
         };
 
-        // Escuta mudanças no localStorage para sinalização
-        window.addEventListener('storage', (event) => {
-            if (event.key === 'signal' && event.newValue) {
-                const signal = JSON.parse(event.newValue);
-                handleSignal(signal);
-            }
-        });
-
-        // Inicia a conexão
+        // Inicia a conexão ao carregar a página
         startConnection();
-
-        // Atualiza o contador de usuários ao iniciar a página
-        userCountValue = parseInt(localStorage.getItem('userCount')) || 0;
-        userCount.textContent = ++userCountValue;
-        localStorage.setItem('userCount', userCountValue);
-
-        // Atualiza o contador de usuários ao fechar a aba
-        window.addEventListener('beforeunload', () => {
-            userCountValue = parseInt(localStorage.getItem('userCount')) || 1;
-            localStorage.setItem('userCount', --userCountValue);
-        });
     </script>
 </body>
 </html>
