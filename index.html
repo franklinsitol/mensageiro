@@ -3,149 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat P2P com WebRTC</title>
+    <title>Chat GUN com Imagens</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #messages { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; height: 200px; overflow-y: scroll; }
-        #messageInput { width: 80%; padding: 10px; }
-        #sendButton { width: 15%; padding: 10px; }
-        #offerInput, #answerInput { width: 100%; margin-top: 10px; height: 50px; padding: 10px; }
-        .step { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-        .step.completed { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
-        .step.in-progress { background-color: #fff3cd; border-color: #ffeeba; color: #856404; }
-        .step.not-started { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        h1 {
+            margin: 0 0 20px;
+        }
+        #messages {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            margin: 10px 0;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            width: calc(100% - 22px);
+        }
+        input {
+            font-size: 16px;
+        }
+        button {
+            background: #2575fc;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #6a11cb;
+        }
     </style>
 </head>
 <body>
-    <h1>Chat P2P com WebRTC</h1>
-
-    <div id="messages"></div>
-    <input type="text" id="messageInput" placeholder="Digite sua mensagem..." />
-    <button id="sendButton">Enviar</button>
-
-    <h3>Conexão</h3>
-    <div id="steps">
-        <div class="step not-started" id="step1">1. Clique em "Criar Oferta" para gerar uma oferta.</div>
-        <div class="step not-started" id="step2">2. Cole a oferta na outra aba e clique em "Conectar".</div>
-        <div class="step not-started" id="step3">3. Você verá a resposta gerada.</div>
-        <div class="step not-started" id="step4">4. Comece a enviar mensagens!</div>
+    <div class="container">
+        <h1>Chat GUN com Imagens</h1>
+        <input id="yourName" type="text" placeholder="Digite seu nome" />
+        <div id="messages"></div>
+        <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
+        <input id="imageInput" type="file" accept="image/*" />
+        <button id="sendMessage">Enviar Mensagem</button>
     </div>
 
-    <h4>Oferta</h4>
-    <textarea id="offerInput" placeholder="Cole a oferta aqui (se houver)"></textarea>
-    <button id="createOfferButton">Criar Oferta</button>
-
-    <h4>Resposta</h4>
-    <textarea id="answerInput" placeholder="Cole a resposta aqui (se houver)"></textarea>
-    <button id="createAnswerButton">Criar Resposta</button>
-    <button id="connectButton">Conectar</button>
-
+    <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
     <script>
-        const messagesDiv = document.getElementById("messages");
-        const messageInput = document.getElementById("messageInput");
-        const sendButton = document.getElementById("sendButton");
-        const offerInput = document.getElementById("offerInput");
-        const answerInput = document.getElementById("answerInput");
-        const connectButton = document.getElementById("connectButton");
-        const createOfferButton = document.getElementById("createOfferButton");
-        const createAnswerButton = document.getElementById("createAnswerButton");
+        const gun = Gun();
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageBtn = document.getElementById('sendMessage');
+        const yourNameInput = document.getElementById('yourName');
+        const imageInput = document.getElementById('imageInput');
 
-        let localConnection;
-        let remoteConnection;
-        let sendChannel;
-
-        function addMessage(message) {
-            const messageElement = document.createElement("div");
-            messageElement.textContent = message;
-            messagesDiv.appendChild(messageElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-rolagem
+        // Função para adicionar mensagens ao chat
+        function addMessage(name, message) {
+            const msgElement = document.createElement('div');
+            msgElement.textContent = `${name}: ${message}`;
+            messagesDiv.appendChild(msgElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
         }
 
-        // Envio de mensagem
-        sendButton.onclick = () => {
-            const message = messageInput.value;
-            if (message) {
-                sendChannel.send(message); // Envia a mensagem pela conexão
-                addMessage("Você: " + message); // Adiciona à interface
-                messageInput.value = ""; // Limpa o campo de entrada
-            }
-        };
+        // Função para adicionar imagem ao chat
+        function addImageMessage(name, imageUrl) {
+            const imgElement = document.createElement('img');
+            imgElement.src = imageUrl;
+            imgElement.alt = "Imagem enviada";
+            imgElement.style.maxWidth = '100%';
+            imgElement.style.borderRadius = '10px';
+            const msgElement = document.createElement('div');
+            msgElement.textContent = `${name}: `;
+            msgElement.appendChild(imgElement);
+            messagesDiv.appendChild(msgElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
+        }
 
-        // Cria uma nova oferta e a exibe
-        createOfferButton.onclick = async () => {
-            setupConnection(); // Configura a conexão
-            const offer = await localConnection.createOffer();
-            await localConnection.setLocalDescription(offer);
-            offerInput.value = JSON.stringify(localConnection.localDescription); // Exibe a oferta
-
-            // Atualiza o progresso
-            updateStep(1, 'completed');
-            updateStep(2, 'in-progress');
-        };
-
-        // Cria a resposta a partir da oferta
-        createAnswerButton.onclick = async () => {
-            const offer = offerInput.value;
-            if (offer) {
-                await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offer)));
-
-                // Cria a resposta e define a descrição local
-                const localAnswer = await remoteConnection.createAnswer();
-                await remoteConnection.setLocalDescription(localAnswer);
-
-                // Exibe a resposta gerada
-                answerInput.value = JSON.stringify(remoteConnection.localDescription); // Exibe a resposta
-                addMessage("Resposta gerada: " + answerInput.value); // Adiciona a resposta gerada ao chat
-
-                // Atualiza o progresso
-                updateStep(2, 'completed');
-                updateStep(3, 'completed');
-            }
-        };
-
-        // Conecta ao outro peer usando a resposta copiada
-        connectButton.onclick = async () => {
-            const answer = answerInput.value;
-            if (answer) {
-                // Define a descrição remota
-                await remoteConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(answer)));
-
-                // Atualiza o progresso
-                updateStep(4, 'in-progress');
-            }
-        };
-
-        async function setupConnection() {
-            localConnection = new RTCPeerConnection();
-            sendChannel = localConnection.createDataChannel("sendChannel");
-
-            sendChannel.onopen = () => console.log("Can send messages");
-            sendChannel.onclose = () => console.log("Send channel closed");
-
-            localConnection.onicecandidate = e => {
-                if (e.candidate) {
-                    remoteConnection.addIceCandidate(e.candidate);
+        // Escuta novas mensagens
+        gun.get('chat').on((data) => {
+            if (data && data.name && data.message) {
+                if (data.message.startsWith('data:image/')) {
+                    addImageMessage(data.name, data.message);
+                } else {
+                    addMessage(data.name, data.message);
                 }
-            };
+            }
+        });
 
-            remoteConnection = new RTCPeerConnection();
-            remoteConnection.ondatachannel = event => {
-                const receiveChannel = event.channel;
-                receiveChannel.onmessage = e => addMessage("Remoto: " + e.data);
-            };
+        // Enviar mensagem
+        sendMessageBtn.addEventListener('click', () => {
+            const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
+            const message = messageInput.value.trim();
+            const imageFile = imageInput.files[0];
 
-            remoteConnection.onicecandidate = e => {
-                if (e.candidate) {
-                    localConnection.addIceCandidate(e.candidate);
-                }
-            };
-        }
+            // Validação de entrada
+            if (!name || (!message && !imageFile)) {
+                alert("Por favor, insira um nome e uma mensagem ou selecione uma imagem.");
+                return; // Sai da função se não há entradas válidas
+            }
 
-        function updateStep(stepNumber, status) {
-            const step = document.getElementById(`step${stepNumber}`);
-            step.classList.remove('not-started', 'in-progress', 'completed');
-            step.classList.add(status);
-        }
+            // Envio da imagem
+            if (imageFile) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const imageData = reader.result;
+                    gun.get('chat').put({ name, message: imageData }) // Adiciona a imagem ao GUN
+                        .then(() => {
+                            imageInput.value = ''; // Limpa o campo de arquivo
+                        })
+                        .catch(() => {
+                            alert("Erro ao enviar a imagem.");
+                        });
+                };
+                reader.readAsDataURL(imageFile); // Lê o arquivo como URL
+            } else if (message) {
+                gun.get('chat').put({ name, message }) // Adiciona a mensagem ao GUN
+                    .then(() => {
+                        messageInput.value = ''; // Limpa o campo de entrada
+                    })
+                    .catch(() => {
+                        alert("Erro ao enviar a mensagem.");
+                    });
+            }
+        });
     </script>
 </body>
 </html>
