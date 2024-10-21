@@ -104,7 +104,7 @@
             }
         });
 
-        // Enviar mensagem
+        // Função para enviar mensagem
         function sendMessage() {
             const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
             const message = messageInput.value.trim();
@@ -115,6 +115,9 @@
                 return; // Sai da função se não há entradas válidas
             }
 
+            // Salvar nome no localStorage
+            localStorage.setItem('username', name);
+
             // Envio da mensagem
             gun.get('chat').set({ name, message })
                 .then(() => {
@@ -124,6 +127,17 @@
                     alert("Erro ao enviar a mensagem.");
                 });
         }
+
+        // Carregar o nome do usuário salvo
+        function loadUsername() {
+            const savedName = localStorage.getItem('username');
+            if (savedName) {
+                yourNameInput.value = savedName;
+            }
+        }
+
+        // Carregar nome ao iniciar a página
+        loadUsername();
 
         // Evento para o botão de enviar
         sendMessageBtn.addEventListener('click', sendMessage);
