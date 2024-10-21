@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat GUN</title>
+    <title>Chat</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,6 +36,23 @@
             overflow-y: scroll;
             margin: 10px 0;
         }
+        .message {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background: #c0392b;
+        }
         #typingStatus {
             font-size: 14px;
             color: #ccc;
@@ -65,17 +82,17 @@
         <h1>Chat GUN</h1>
         <input id="yourName" type="text" placeholder="Digite seu nome" />
         <div id="messages"></div>
-        <div id="typingStatus"></div> <!-- Indicação de usuário digitando -->
+        <div id="typingStatus"></div>
         <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
         <button id="sendMessage">Enviar Mensagem</button>
     </div>
 
     <!-- Inclui GUN e especifica relay peer -->
     <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
-    <script src="https://cdn.rawgit.com/amark/gun/master/sea.js"></script> <!-- Inclui biblioteca de criptografia SEA -->
+    <script src="https://cdn.rawgit.com/amark/gun/master/sea.js"></script>
     <script>
         const gun = Gun({
-            peers: ['https://gun-manhattan.herokuapp.com/gun'] // Relay peer público
+            peers: ['https://gun-manhattan.herokuapp.com/gun']
         });
 
         const messagesDiv = document.getElementById('messages');
@@ -87,25 +104,36 @@
         let notificationTimeout;
         let typingTimeout;
 
-        // Definir uma chave simétrica compartilhada para todos os usuários
-        const sharedSecret = 'minha-chave-compartilhada'; // Esta chave pode ser mais segura e gerada dinamicamente
+        const sharedSecret = 'minha-chave-compartilhada';
 
-        // Função para adicionar mensagens ao chat
-        function addMessage(name, message) {
+        // Função para adicionar mensagens ao chat com botão de exclusão
+        function addMessage(id, name, message) {
             const msgElement = document.createElement('div');
-            msgElement.textContent = `${name}: ${message}`;
+            msgElement.classList.add('message');
+            const messageContent = document.createElement('span');
+            messageContent.textContent = `${name}: ${message}`;
+
+            // Verifica se o nome corresponde ao nome do usuário atual para exibir o botão de exclusão
+            if (name === yourNameInput.value) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Excluir';
+                deleteBtn.classList.add('delete-btn');
+                deleteBtn.onclick = () => deleteMessage(id); // Adiciona evento para excluir a mensagem
+                msgElement.appendChild(deleteBtn);
+            }
+
+            msgElement.appendChild(messageContent);
             messagesDiv.appendChild(msgElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Carregar histórico de mensagens
+        // Função para carregar histórico de mensagens
         function loadMessages() {
-            gun.get('chat').map().once((data) => {
+            gun.get('chat').map().once((data, id) => {
                 if (data && data.name && data.message) {
-                    // Descriptografar mensagens com a chave compartilhada
                     Gun.SEA.decrypt(data.message, sharedSecret).then((decryptedMessage) => {
                         if (decryptedMessage) {
-                            addMessage(data.name, decryptedMessage);
+                            addMessage(id, data.name, decryptedMessage);
                         }
                     }).catch((err) => {
                         console.error("Erro ao descriptografar mensagem", err);
@@ -114,41 +142,25 @@
             });
         }
 
-        // Chamar função para carregar as mensagens ao carregar a página
         loadMessages();
-
-        // Notificação de nova mensagem (alterar título da aba)
-        function notifyNewMessage() {
-            if (!document.hasFocus()) { // Somente notifica se a aba não está em foco
-                clearTimeout(notificationTimeout); // Evita múltiplos timers
-                document.title = "Nova mensagem!";
-                notificationTimeout = setTimeout(() => {
-                    document.title = originalTitle;
-                }, 3000); // Retorna o título original após 3 segundos
-            }
-        }
 
         // Função para enviar mensagem
         function sendMessage() {
             const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
             const message = messageInput.value.trim();
 
-            // Validação de entrada
             if (!name || !message) {
                 alert("Por favor, insira um nome e uma mensagem.");
-                return; // Sai da função se não há entradas válidas
+                return;
             }
 
-            // Salvar nome no localStorage
             localStorage.setItem('username', name);
 
-            // Criptografar a mensagem com a chave compartilhada
             Gun.SEA.encrypt(message, sharedSecret).then((encryptedMessage) => {
-                // Envio da mensagem criptografada
                 gun.get('chat').set({ name, message: encryptedMessage })
                     .then(() => {
-                        messageInput.value = ''; // Limpa o campo de entrada
-                        updateTypingStatus(''); // Limpa o status de digitação
+                        messageInput.value = '';
+                        updateTypingStatus('');
                     })
                     .catch(() => {
                         alert("Erro ao enviar a mensagem.");
@@ -156,7 +168,11 @@
             });
         }
 
-        // Carregar o nome do usuário salvo
+        // Função para excluir mensagem
+        function deleteMessage(id) {
+            gun.get('chat').get(id).put(null); // Remove a mensagem do GUN
+        }
+
         function loadUsername() {
             const savedName = localStorage.getItem('username');
             if (savedName) {
@@ -164,38 +180,38 @@
             }
         }
 
-        // Notificação de digitação
         function notifyTyping() {
             const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
             gun.get('typing').put({ name, typing: true });
 
-            // Timeout para limpar a indicação de digitação após 2 segundos de inatividade
             clearTimeout(typingTimeout);
             typingTimeout = setTimeout(() => {
                 gun.get('typing').put({ name, typing: false });
             }, 2000);
         }
 
-        // Função para exibir ou limpar status de digitação
         function updateTypingStatus(message) {
             typingStatusDiv.textContent = message;
         }
 
-        // Escuta novas mensagens
-        gun.get('chat').on((data) => {
+        gun.get('chat').on((data, id) => {
             if (data && data.name && data.message) {
                 Gun.SEA.decrypt(data.message, sharedSecret).then((decryptedMessage) => {
                     if (decryptedMessage) {
-                        addMessage(data.name, decryptedMessage);
-                        notifyNewMessage(); // Chama notificação visual
+                        addMessage(id, data.name, decryptedMessage);
+                        notifyNewMessage();
                     }
                 }).catch((err) => {
                     console.error("Erro ao descriptografar mensagem", err);
                 });
+            } else if (data === null) {
+                const messageElement = document.querySelector(`[data-id="${id}"]`);
+                if (messageElement) {
+                    messagesDiv.removeChild(messageElement);
+                }
             }
         });
 
-        // Escuta quando um usuário está digitando
         gun.get('typing').on((data) => {
             if (data && data.typing && data.name !== yourNameInput.value) {
                 updateTypingStatus(`${data.name} está digitando...`);
@@ -204,18 +220,15 @@
             }
         });
 
-        // Carregar nome ao iniciar a página
         loadUsername();
 
-        // Evento para o botão de enviar
         sendMessageBtn.addEventListener('click', sendMessage);
 
-        // Permitir envio de mensagem com a tecla Enter
         messageInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendMessage();
             } else {
-                notifyTyping(); // Notifica quando o usuário começa a digitar
+                notifyTyping();
             }
         });
     </script>
