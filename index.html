@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat GUN</title>
+    <title>Beemote chat</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -77,6 +77,8 @@
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
         const yourNameInput = document.getElementById('yourName');
+        let originalTitle = document.title;
+        let notificationTimeout;
 
         // Definir uma chave simétrica compartilhada para todos os usuários
         const sharedSecret = 'minha-chave-compartilhada'; // Esta chave pode ser mais segura e gerada dinamicamente
@@ -107,19 +109,6 @@
 
         // Chamar função para carregar as mensagens ao carregar a página
         loadMessages();
-
-        // Escuta novas mensagens
-        gun.get('chat').on((data) => {
-            if (data && data.name && data.message) {
-                Gun.SEA.decrypt(data.message, sharedSecret).then((decryptedMessage) => {
-                    if (decryptedMessage) {
-                        addMessage(data.name, decryptedMessage);
-                    }
-                }).catch((err) => {
-                    console.error("Erro ao descriptografar mensagem", err);
-                });
-            }
-        });
 
         // Função para enviar mensagem
         function sendMessage() {
@@ -155,6 +144,31 @@
                 yourNameInput.value = savedName;
             }
         }
+
+        // Notificação de nova mensagem (alterar título da aba)
+        function notifyNewMessage() {
+            if (!document.hasFocus()) { // Somente notifica se a aba não está em foco
+                clearTimeout(notificationTimeout); // Evita múltiplos timers
+                document.title = "Nova mensagem!";
+                notificationTimeout = setTimeout(() => {
+                    document.title = originalTitle;
+                }, 3000); // Retorna o título original após 3 segundos
+            }
+        }
+
+        // Escuta novas mensagens
+        gun.get('chat').on((data) => {
+            if (data && data.name && data.message) {
+                Gun.SEA.decrypt(data.message, sharedSecret).then((decryptedMessage) => {
+                    if (decryptedMessage) {
+                        addMessage(data.name, decryptedMessage);
+                        notifyNewMessage(); // Chama notificação visual
+                    }
+                }).catch((err) => {
+                    console.error("Erro ao descriptografar mensagem", err);
+                });
+            }
+        });
 
         // Carregar nome ao iniciar a página
         loadUsername();
