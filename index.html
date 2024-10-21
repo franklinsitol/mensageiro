@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat GUN</title>
+    <title>Beemote Chat</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -42,6 +42,7 @@
             border: 1px solid #ddd;
         }
         .message {
+            position: relative;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -51,25 +52,19 @@
             border-radius: 10px; /* Bordas arredondadas */
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             border: 1px solid #eee;
-            position: relative; /* Para posicionar o botão de exclusão */
         }
         .delete-btn {
+            display: none; /* Esconder botão de exclusão por padrão */
             background-color: transparent; /* Fundo transparente */
-            border: none;
+            border: none; /* Sem borda */
             cursor: pointer;
-            padding: 0;
-            margin-left: 10px; /* Espaçamento à esquerda do ícone */
-            display: none; /* Inicialmente oculto */
-            position: absolute; /* Para que fique posicionado corretamente */
-            right: 10px; /* Espaçamento da borda direita */
-            top: 10px; /* Alinhado ao topo da mensagem */
+            position: absolute; /* Posicionar em relação à mensagem */
+            right: 10px; /* Espaço do lado direito */
+            bottom: 10px; /* Espaço do fundo */
+            transition: opacity 0.3s;
         }
         .message:hover .delete-btn {
-            display: block; /* Exibe ao passar o mouse */
-        }
-        .delete-icon {
-            width: 20px; /* Largura do ícone */
-            height: 20px; /* Altura do ícone */
+            display: block; /* Mostrar botão de exclusão ao passar o mouse na mensagem */
         }
         input, button {
             padding: 10px;
@@ -133,7 +128,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Chat GUN</h1>
+        <h1>Beemote Chat</h1>
         <div id="messages"></div>
         <div id="typingStatus"></div>
         <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
@@ -192,14 +187,9 @@
             const storedName = localStorage.getItem('profileName');
             if (storedName && name === storedName) {
                 const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '🗑️'; // Ícone de lixeira
                 deleteBtn.classList.add('delete-btn');
                 deleteBtn.onclick = () => deleteMessage(id); // Adiciona evento para excluir a mensagem
-
-                const deleteIcon = document.createElement('img');
-                deleteIcon.src = 'https://img.icons8.com/ios-filled/50/000000/trash.png'; // Link para ícone de lixeira
-                deleteIcon.classList.add('delete-icon');
-                deleteBtn.appendChild(deleteIcon);
-
                 msgElement.appendChild(deleteBtn);
             }
 
@@ -236,57 +226,45 @@
             }
 
             Gun.SEA.encrypt(message, sharedSecret).then((encryptedMessage) => {
-                gun.get('chat').set({ name: profileName, message: encryptedMessage });
-                messageInput.value = ''; // Limpa o campo de entrada de mensagem
-            }).catch((err) => {
-                console.error("Erro ao criptografar mensagem", err);
+                gun.get('chat').set({ name: profileName, message: encryptedMessage })
+                    .then(() => {
+                        messageInput.value = '';
+                    })
+                    .catch(() => {
+                        alert("Erro ao enviar a mensagem.");
+                    });
             });
         }
 
         // Função para excluir mensagem
         function deleteMessage(id) {
             gun.get('chat').get(id).put(null); // Remove a mensagem do GUN
-            const messageElement = document.querySelector(`.message[data-id="${id}"]`);
-            if (messageElement) {
-                messageElement.remove(); // Remove a mensagem da visualização
-            }
         }
 
-        // Evento de clique no botão de enviar mensagem
-        sendMessageBtn.onclick = sendMessage;
+        sendMessageBtn.addEventListener('click', sendMessage);
 
-        // Evento de clique no botão de perfil
-        profileButton.onclick = () => {
-            profileModal.style.display = 'block'; // Mostra o modal
-        };
+        // Função para abrir o modal de perfil
+        profileButton.addEventListener('click', () => {
+            profileModal.style.display = 'block';
+            const storedName = localStorage.getItem('profileName');
+            const storedEmail = localStorage.getItem('profileEmail');
+            profileNameInput.value = storedName || '';
+            profileEmailInput.value = storedEmail || '';
+        });
 
-        // Evento de clique no botão de fechar o modal
-        closeModal.onclick = () => {
-            profileModal.style.display = 'none'; // Fecha o modal
-        };
+        // Função para fechar o modal de perfil
+        closeModal.addEventListener('click', () => {
+            profileModal.style.display = 'none';
+        });
 
-        // Evento de salvar o perfil
-        saveProfileBtn.onclick = () => {
-            const name = profileNameInput.value.trim();
-            const email = profileEmailInput.value.trim();
-            if (name) {
-                localStorage.setItem('profileName', name);
-                localStorage.setItem('profileEmail', email);
-                profileModal.style.display = 'none'; // Fecha o modal
-                profileNameInput.value = ''; // Limpa o campo de nome
-                profileEmailInput.value = ''; // Limpa o campo de email
-            } else {
-                alert("Por favor, insira um nome.");
-            }
-        };
-
-        // Monitorar digitação
-        messageInput.addEventListener('input', () => {
-            clearTimeout(typingTimeout);
-            typingStatus.innerHTML = 'Você está digitando...';
-            typingTimeout = setTimeout(() => {
-                typingStatus.innerHTML = '';
-            }, 2000);
+        // Função para salvar perfil
+        saveProfileBtn.addEventListener('click', () => {
+            const name = profileNameInput.value;
+            const email = profileEmailInput.value;
+            localStorage.setItem('profileName', name);
+            localStorage.setItem('profileEmail', email);
+            profileModal.style.display = 'none';
+            alert("Perfil salvo com sucesso!");
         });
     </script>
 </body>
