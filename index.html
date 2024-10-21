@@ -54,10 +54,6 @@
         button:hover {
             background: #6a11cb;
         }
-        img {
-            max-width: 100%;
-            border-radius: 10px;
-        }
     </style>
 </head>
 <body>
@@ -70,9 +66,14 @@
         <button id="sendMessage">Enviar Mensagem</button>
     </div>
 
+    <!-- Inclui GUN e especifica relay peer -->
     <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
     <script>
-        const gun = Gun();
+        // Conectando ao relay peer para permitir sincronização entre dispositivos
+        const gun = Gun({
+            peers: ['https://gun-manhattan.herokuapp.com/gun'] // Relay peer público
+        });
+        
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
@@ -92,6 +93,8 @@
             const imgElement = document.createElement('img');
             imgElement.src = imageUrl;
             imgElement.alt = "Imagem enviada";
+            imgElement.style.maxWidth = '100%';
+            imgElement.style.borderRadius = '10px';
             const msgElement = document.createElement('div');
             msgElement.textContent = `${name}: `;
             msgElement.appendChild(imgElement);
@@ -112,21 +115,38 @@
 
         // Enviar mensagem
         sendMessageBtn.addEventListener('click', () => {
-            const name = yourNameInput.value || 'Usuário Desconhecido';
+            const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
             const message = messageInput.value.trim();
             const imageFile = imageInput.files[0];
 
+            // Validação de entrada
+            if (!name || (!message && !imageFile)) {
+                alert("Por favor, insira um nome e uma mensagem ou selecione uma imagem.");
+                return; // Sai da função se não há entradas válidas
+            }
+
+            // Envio da imagem
             if (imageFile) {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const imageData = reader.result;
-                    gun.get('chat').set({ name, message: imageData });
+                    gun.get('chat').put({ name, message: imageData }) // Adiciona a imagem ao GUN
+                        .then(() => {
+                            imageInput.value = ''; // Limpa o campo de arquivo
+                        })
+                        .catch(() => {
+                            alert("Erro ao enviar a imagem.");
+                        });
                 };
-                reader.readAsDataURL(imageFile);
-                imageInput.value = ''; // Limpa o campo de arquivo
+                reader.readAsDataURL(imageFile); // Lê o arquivo como URL
             } else if (message) {
-                gun.get('chat').set({ name, message });
-                messageInput.value = ''; // Limpa o campo de entrada
+                gun.get('chat').put({ name, message }) // Adiciona a mensagem ao GUN
+                    .then(() => {
+                        messageInput.value = ''; // Limpa o campo de entrada
+                    })
+                    .catch(() => {
+                        alert("Erro ao enviar a mensagem.");
+                    });
             }
         });
     </script>
