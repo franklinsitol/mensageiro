@@ -68,11 +68,10 @@
     <!-- Inclui GUN e especifica relay peer -->
     <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
     <script>
-        // Conectando ao relay peer para permitir sincronização entre dispositivos
         const gun = Gun({
             peers: ['https://gun-manhattan.herokuapp.com/gun'] // Relay peer público
         });
-        
+
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
@@ -86,6 +85,18 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
         }
 
+        // Carregar histórico de mensagens
+        function loadMessages() {
+            gun.get('chat').map().once((data) => {
+                if (data && data.name && data.message) {
+                    addMessage(data.name, data.message);
+                }
+            });
+        }
+
+        // Chamar função para carregar as mensagens ao carregar a página
+        loadMessages();
+
         // Escuta novas mensagens
         gun.get('chat').on((data) => {
             if (data && data.name && data.message) {
@@ -94,7 +105,7 @@
         });
 
         // Enviar mensagem
-        sendMessageBtn.addEventListener('click', () => {
+        function sendMessage() {
             const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
             const message = messageInput.value.trim();
 
@@ -105,13 +116,23 @@
             }
 
             // Envio da mensagem
-            gun.get('chat').put({ name, message })
+            gun.get('chat').set({ name, message })
                 .then(() => {
                     messageInput.value = ''; // Limpa o campo de entrada
                 })
                 .catch(() => {
                     alert("Erro ao enviar a mensagem.");
                 });
+        }
+
+        // Evento para o botão de enviar
+        sendMessageBtn.addEventListener('click', sendMessage);
+
+        // Permitir envio de mensagem com a tecla Enter
+        messageInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
         });
     </script>
 </body>
