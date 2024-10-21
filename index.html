@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GUN com Imagens</title>
+    <title>Chat GUN com Imagens</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -54,6 +54,10 @@
         button:hover {
             background: #6a11cb;
         }
+        img {
+            max-width: 100%;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
@@ -88,49 +92,11 @@
             const imgElement = document.createElement('img');
             imgElement.src = imageUrl;
             imgElement.alt = "Imagem enviada";
-            imgElement.style.maxWidth = '100%';
-            imgElement.style.borderRadius = '10px';
             const msgElement = document.createElement('div');
             msgElement.textContent = `${name}: `;
             msgElement.appendChild(imgElement);
             messagesDiv.appendChild(msgElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
-        }
-
-        // Função para redimensionar a imagem antes de enviar
-        function resizeImage(imageFile, maxWidth, maxHeight, callback) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
-
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    // Calcula nova proporção
-                    if (width > height) {
-                        if (width > maxWidth) {
-                            height = Math.round((height *= maxWidth / width));
-                            width = maxWidth;
-                        }
-                    } else {
-                        if (height > maxHeight) {
-                            width = Math.round((width *= maxHeight / height));
-                            height = maxHeight;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-
-                    // Retorna imagem redimensionada em base64
-                    callback(canvas.toDataURL('image/jpeg', 0.7)); // Qualidade ajustada para 0.7
-                };
-            };
-            reader.readAsDataURL(imageFile);
         }
 
         // Escuta novas mensagens
@@ -144,24 +110,22 @@
             }
         });
 
-        // Enviar mensagem ou imagem
+        // Enviar mensagem
         sendMessageBtn.addEventListener('click', () => {
-            const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
+            const name = yourNameInput.value || 'Usuário Desconhecido';
             const message = messageInput.value.trim();
             const imageFile = imageInput.files[0];
 
-            if (!name || (!message && !imageFile)) {
-                alert("Por favor, insira um nome e uma mensagem ou selecione uma imagem.");
-                return;
-            }
-
             if (imageFile) {
-                resizeImage(imageFile, 800, 600, (resizedImageData) => {
-                    gun.get('chat').put({ name, message: resizedImageData });
-                    imageInput.value = ''; // Limpa o campo de arquivo
-                });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const imageData = reader.result;
+                    gun.get('chat').set({ name, message: imageData });
+                };
+                reader.readAsDataURL(imageFile);
+                imageInput.value = ''; // Limpa o campo de arquivo
             } else if (message) {
-                gun.get('chat').put({ name, message });
+                gun.get('chat').set({ name, message });
                 messageInput.value = ''; // Limpa o campo de entrada
             }
         });
