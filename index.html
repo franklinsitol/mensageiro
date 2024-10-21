@@ -51,23 +51,18 @@
             border-radius: 10px; /* Bordas arredondadas */
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             border: 1px solid #eee;
-            position: relative; /* Para posicionar o ícone de exclusão */
         }
         .delete-btn {
-            background-color: transparent;
+            background-color: #333; /* Botão preto */
+            color: white;
             border: none;
+            border-radius: 5px; /* Bordas arredondadas */
+            padding: 5px 10px;
             cursor: pointer;
-            position: absolute;
-            bottom: 5px; /* Posição inferior */
-            right: 5px; /* Posição à direita */
-            visibility: hidden; /* Esconde o botão por padrão */
+            transition: background 0.3s;
         }
         .delete-btn:hover {
-            opacity: 0.7; /* Aumenta a opacidade ao passar o mouse */
-        }
-        .delete-icon {
-            width: 20px; /* Tamanho do ícone */
-            height: 20px;
+            background-color: #555;
         }
         input, button {
             padding: 10px;
@@ -178,7 +173,7 @@
 
         const sharedSecret = 'minha-chave-compartilhada';
 
-        // Função para adicionar mensagens ao chat com ícone de exclusão
+        // Função para adicionar mensagens ao chat com botão de exclusão
         function addMessage(id, name, message) {
             const msgElement = document.createElement('div');
             msgElement.classList.add('message');
@@ -186,41 +181,19 @@
             const messageContent = document.createElement('span');
             messageContent.textContent = `${name}: ${message}`;
 
-            // Verifica se o nome corresponde ao nome do usuário atual para exibir o ícone de exclusão
+            // Verifica se o nome corresponde ao nome do usuário atual para exibir o botão de exclusão
             const storedName = localStorage.getItem('profileName');
             if (storedName && name === storedName) {
                 const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Excluir';
                 deleteBtn.classList.add('delete-btn');
                 deleteBtn.onclick = () => deleteMessage(id); // Adiciona evento para excluir a mensagem
-                
-                // Ícone de lixeira
-                const deleteIcon = document.createElement('img');
-                deleteIcon.src = 'https://img.icons8.com/ios-filled/50/000000/trash.png'; // URL do ícone de lixeira
-                deleteIcon.alt = 'Excluir';
-                deleteIcon.classList.add('delete-icon');
-
-                deleteBtn.appendChild(deleteIcon);
                 msgElement.appendChild(deleteBtn);
             }
 
             msgElement.appendChild(messageContent);
             messagesDiv.appendChild(msgElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-            // Torna o botão de excluir visível apenas ao passar o mouse sobre a mensagem
-            msgElement.addEventListener('mouseenter', () => {
-                const deleteButton = msgElement.querySelector('.delete-btn');
-                if (deleteButton) {
-                    deleteButton.style.visibility = 'visible';
-                }
-            });
-
-            msgElement.addEventListener('mouseleave', () => {
-                const deleteButton = msgElement.querySelector('.delete-btn');
-                if (deleteButton) {
-                    deleteButton.style.visibility = 'hidden';
-                }
-            });
         }
 
         // Função para carregar histórico de mensagens
@@ -242,28 +215,35 @@
 
         // Função para enviar mensagem
         function sendMessage() {
-            const profileName = localStorage.getItem('profileName') || 'Usuário Anônimo';
+            const profileName = localStorage.getItem('profileName') || 'Usuário Desconhecido';
             const message = messageInput.value.trim();
-            if (message) {
-                const encryptedMessage = Gun.SEA.encrypt(message, sharedSecret);
-                gun.get('chat').set({
-                    name: profileName,
-                    message: encryptedMessage
-                });
-                messageInput.value = '';
+
+            if (!message) {
+                alert("Por favor, insira uma mensagem.");
+                return;
             }
+
+            Gun.SEA.encrypt(message, sharedSecret).then((encryptedMessage) => {
+                gun.get('chat').set({ name: profileName, message: encryptedMessage })
+                    .then(() => {
+                        messageInput.value = '';
+                    })
+                    .catch(() => {
+                        alert("Erro ao enviar a mensagem.");
+                    });
+            });
         }
 
         // Função para excluir mensagem
         function deleteMessage(id) {
             gun.get('chat').get(id).put(null); // Remove a mensagem do GUN
-            const msgElement = document.querySelector(`[data-id="${id}"]`);
-            if (msgElement) {
-                msgElement.remove(); // Remove a mensagem da interface
+            const messageElement = document.querySelector(`[data-id="${id}"]`);
+            if (messageElement) {
+                messagesDiv.removeChild(messageElement); // Remove visualmente a mensagem da interface
             }
         }
 
-        // Função para salvar perfil
+        // Função para salvar o perfil
         function saveProfile() {
             const profileName = profileNameInput.value.trim();
             const profileEmail = profileEmailInput.value.trim();
