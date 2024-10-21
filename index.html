@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GUN</title>
+    <title>Chat GUN</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -78,12 +78,8 @@
         const sendMessageBtn = document.getElementById('sendMessage');
         const yourNameInput = document.getElementById('yourName');
 
-        // Gera um par de chaves para criptografia com SEA
-        let userKeyPair;
-
-        Gun.SEA.pair().then((pair) => {
-            userKeyPair = pair;
-        });
+        // Definir uma chave simétrica compartilhada para todos os usuários
+        const sharedSecret = 'minha-chave-compartilhada'; // Esta chave pode ser mais segura e gerada dinamicamente
 
         // Função para adicionar mensagens ao chat
         function addMessage(name, message) {
@@ -97,8 +93,8 @@
         function loadMessages() {
             gun.get('chat').map().once((data) => {
                 if (data && data.name && data.message) {
-                    // Descriptografar mensagens
-                    Gun.SEA.decrypt(data.message, userKeyPair).then((decryptedMessage) => {
+                    // Descriptografar mensagens com a chave compartilhada
+                    Gun.SEA.decrypt(data.message, sharedSecret).then((decryptedMessage) => {
                         if (decryptedMessage) {
                             addMessage(data.name, decryptedMessage);
                         }
@@ -115,7 +111,7 @@
         // Escuta novas mensagens
         gun.get('chat').on((data) => {
             if (data && data.name && data.message) {
-                Gun.SEA.decrypt(data.message, userKeyPair).then((decryptedMessage) => {
+                Gun.SEA.decrypt(data.message, sharedSecret).then((decryptedMessage) => {
                     if (decryptedMessage) {
                         addMessage(data.name, decryptedMessage);
                     }
@@ -139,8 +135,8 @@
             // Salvar nome no localStorage
             localStorage.setItem('username', name);
 
-            // Criptografar a mensagem antes de enviar
-            Gun.SEA.encrypt(message, userKeyPair).then((encryptedMessage) => {
+            // Criptografar a mensagem com a chave compartilhada
+            Gun.SEA.encrypt(message, sharedSecret).then((encryptedMessage) => {
                 // Envio da mensagem criptografada
                 gun.get('chat').set({ name, message: encryptedMessage })
                     .then(() => {
