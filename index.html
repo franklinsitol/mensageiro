@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beemote chat</title>
+    <title>Chat GUN</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,6 +36,10 @@
             overflow-y: scroll;
             margin: 10px 0;
         }
+        #typingStatus {
+            font-size: 14px;
+            color: #ccc;
+        }
         input, button {
             padding: 10px;
             margin: 10px 0;
@@ -61,6 +65,7 @@
         <h1>Chat GUN</h1>
         <input id="yourName" type="text" placeholder="Digite seu nome" />
         <div id="messages"></div>
+        <div id="typingStatus"></div> <!-- Indicação de usuário digitando -->
         <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
         <button id="sendMessage">Enviar Mensagem</button>
     </div>
@@ -77,8 +82,10 @@
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
         const yourNameInput = document.getElementById('yourName');
+        const typingStatusDiv = document.getElementById('typingStatus');
         let originalTitle = document.title;
         let notificationTimeout;
+        let typingTimeout;
 
         // Definir uma chave simétrica compartilhada para todos os usuários
         const sharedSecret = 'minha-chave-compartilhada'; // Esta chave pode ser mais segura e gerada dinamicamente
@@ -110,6 +117,17 @@
         // Chamar função para carregar as mensagens ao carregar a página
         loadMessages();
 
+        // Notificação de nova mensagem (alterar título da aba)
+        function notifyNewMessage() {
+            if (!document.hasFocus()) { // Somente notifica se a aba não está em foco
+                clearTimeout(notificationTimeout); // Evita múltiplos timers
+                document.title = "Nova mensagem!";
+                notificationTimeout = setTimeout(() => {
+                    document.title = originalTitle;
+                }, 3000); // Retorna o título original após 3 segundos
+            }
+        }
+
         // Função para enviar mensagem
         function sendMessage() {
             const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
@@ -130,6 +148,7 @@
                 gun.get('chat').set({ name, message: encryptedMessage })
                     .then(() => {
                         messageInput.value = ''; // Limpa o campo de entrada
+                        updateTypingStatus(''); // Limpa o status de digitação
                     })
                     .catch(() => {
                         alert("Erro ao enviar a mensagem.");
@@ -145,15 +164,21 @@
             }
         }
 
-        // Notificação de nova mensagem (alterar título da aba)
-        function notifyNewMessage() {
-            if (!document.hasFocus()) { // Somente notifica se a aba não está em foco
-                clearTimeout(notificationTimeout); // Evita múltiplos timers
-                document.title = "Nova mensagem!";
-                notificationTimeout = setTimeout(() => {
-                    document.title = originalTitle;
-                }, 3000); // Retorna o título original após 3 segundos
-            }
+        // Notificação de digitação
+        function notifyTyping() {
+            const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
+            gun.get('typing').put({ name, typing: true });
+
+            // Timeout para limpar a indicação de digitação após 2 segundos de inatividade
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                gun.get('typing').put({ name, typing: false });
+            }, 2000);
+        }
+
+        // Função para exibir ou limpar status de digitação
+        function updateTypingStatus(message) {
+            typingStatusDiv.textContent = message;
         }
 
         // Escuta novas mensagens
@@ -170,6 +195,15 @@
             }
         });
 
+        // Escuta quando um usuário está digitando
+        gun.get('typing').on((data) => {
+            if (data && data.typing && data.name !== yourNameInput.value) {
+                updateTypingStatus(`${data.name} está digitando...`);
+            } else {
+                updateTypingStatus('');
+            }
+        });
+
         // Carregar nome ao iniciar a página
         loadUsername();
 
@@ -180,6 +214,8 @@
         messageInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendMessage();
+            } else {
+                notifyTyping(); // Notifica quando o usuário começa a digitar
             }
         });
     </script>
