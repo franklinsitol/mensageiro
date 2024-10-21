@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat GUN</title>
+    <title>GUN</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -67,6 +67,7 @@
 
     <!-- Inclui GUN e especifica relay peer -->
     <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
+    <script src="https://cdn.rawgit.com/amark/gun/master/sea.js"></script> <!-- Inclui biblioteca de criptografia SEA -->
     <script>
         const gun = Gun({
             peers: ['https://gun-manhattan.herokuapp.com/gun'] // Relay peer público
@@ -76,6 +77,13 @@
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
         const yourNameInput = document.getElementById('yourName');
+
+        // Gera um par de chaves para criptografia com SEA
+        let userKeyPair;
+
+        Gun.SEA.pair().then((pair) => {
+            userKeyPair = pair;
+        });
 
         // Função para adicionar mensagens ao chat
         function addMessage(name, message) {
@@ -89,7 +97,14 @@
         function loadMessages() {
             gun.get('chat').map().once((data) => {
                 if (data && data.name && data.message) {
-                    addMessage(data.name, data.message);
+                    // Descriptografar mensagens
+                    Gun.SEA.decrypt(data.message, userKeyPair).then((decryptedMessage) => {
+                        if (decryptedMessage) {
+                            addMessage(data.name, decryptedMessage);
+                        }
+                    }).catch((err) => {
+                        console.error("Erro ao descriptografar mensagem", err);
+                    });
                 }
             });
         }
@@ -100,7 +115,13 @@
         // Escuta novas mensagens
         gun.get('chat').on((data) => {
             if (data && data.name && data.message) {
-                addMessage(data.name, data.message);
+                Gun.SEA.decrypt(data.message, userKeyPair).then((decryptedMessage) => {
+                    if (decryptedMessage) {
+                        addMessage(data.name, decryptedMessage);
+                    }
+                }).catch((err) => {
+                    console.error("Erro ao descriptografar mensagem", err);
+                });
             }
         });
 
@@ -118,14 +139,17 @@
             // Salvar nome no localStorage
             localStorage.setItem('username', name);
 
-            // Envio da mensagem
-            gun.get('chat').set({ name, message })
-                .then(() => {
-                    messageInput.value = ''; // Limpa o campo de entrada
-                })
-                .catch(() => {
-                    alert("Erro ao enviar a mensagem.");
-                });
+            // Criptografar a mensagem antes de enviar
+            Gun.SEA.encrypt(message, userKeyPair).then((encryptedMessage) => {
+                // Envio da mensagem criptografada
+                gun.get('chat').set({ name, message: encryptedMessage })
+                    .then(() => {
+                        messageInput.value = ''; // Limpa o campo de entrada
+                    })
+                    .catch(() => {
+                        alert("Erro ao enviar a mensagem.");
+                    });
+            });
         }
 
         // Carregar o nome do usuário salvo
