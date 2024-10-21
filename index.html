@@ -3,245 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rede Social GUN</title>
+    <title>Chat GUN</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #fff; /* Fundo branco */
-            color: #000; /* Texto preto */
-            margin: 0;
+            color: #333;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
-
         .container {
-            background-color: #f0f0f0;
-            border-radius: 15px;
+            background-color: #fff; /* Fundo branco */
+            border-radius: 20px; /* Bordas arredondadas */
             padding: 20px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            text-align: left;
-            overflow-y: auto;
-            height: 70vh;
-        }
-
-        h1 {
-            text-align: center;
-            color: #000;
-        }
-
-        #messages {
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            padding: 10px;
-            height: calc(100% - 60px);
-            overflow-y: auto;
-            margin-bottom: 20px;
-        }
-
-        input, button {
-            padding: 10px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 5px;
-            width: calc(100% - 20px);
-            font-size: 16px;
-        }
-
-        button {
-            background-color: #000; /* Botões pretos */
-            color: #fff;
-            cursor: pointer;
-            border-radius: 50px; /* Botão arredondado */
-            padding: 15px;
-        }
-
-        button:hover {
-            background-color: #333;
-        }
-
-        #sendMessageBtn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #000; /* Botão flutuante preto */
-            color: #fff;
-            border-radius: 50px;
-            width: 60px;
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        /* Estilos para o modal */
-        .modal {
-            display: none; /* Escondido por padrão */
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
             width: 90%;
             max-width: 500px;
-            color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border: 1px solid #ddd; /* Borda clara */
         }
-
-        .close {
+        h1 {
+            margin: 0 0 20px;
+            font-size: 24px;
             color: #333;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
         }
-
-        .close:hover,
-        .close:focus {
-            color: #000;
-            text-decoration: none;
+        #messages {
+            background-color: #f9f9f9;
+            border-radius: 10px; /* Bordas arredondadas */
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto; /* Rolar verticalmente */
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            flex-grow: 1; /* Permite que a div cresça */
+        }
+        .message {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 10px; /* Bordas arredondadas */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #eee;
+            position: relative; /* Para posicionar o ícone de exclusão */
+        }
+        .delete-btn {
+            background-color: transparent;
+            border: none;
             cursor: pointer;
+            position: absolute;
+            bottom: 5px; /* Posição inferior */
+            right: 5px; /* Posição à direita */
+            visibility: hidden; /* Esconde o botão por padrão */
+        }
+        .delete-btn:hover {
+            opacity: 0.7; /* Aumenta a opacidade ao passar o mouse */
+        }
+        .delete-icon {
+            width: 20px; /* Tamanho do ícone */
+            height: 20px;
+        }
+        input, button {
+            padding: 12px; /* Aumenta o padding para maior conforto em toque */
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px; /* Bordas arredondadas */
+            width: calc(100% - 22px);
+            font-size: 16px;
+        }
+        input {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            color: #333;
+        }
+        button {
+            background-color: #333; /* Botão preto */
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        button .icon {
+            margin-right: 8px;
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .profile-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff; /* Fundo branco */
+            border-radius: 10px; /* Bordas arredondadas */
+            padding: 20px;
+            max-width: 300px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        .profile-modal input {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            color: #333;
+            width: 100%;
+        }
+        .profile-modal h2 {
+            margin-top: 0;
+        }
+        .close-modal {
+            float: right;
+            cursor: pointer;
+            color: #e74c3c;
         }
 
-        /* Responsividade */
-        @media screen and (max-width: 768px) {
-            .container {
-                height: 80vh; /* Ajuste a altura para telas menores */
+        /* Estilos Responsivos */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 20px; /* Tamanho do texto para dispositivos menores */
             }
-
+            #messages {
+                height: 200px; /* Reduz altura do chat */
+            }
             button {
-                padding: 12px;
-            }
-
-            #sendMessageBtn {
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
-
-            .modal-content {
-                width: 95%;
-            }
-        }
-
-        @media screen and (max-width: 480px) {
-            #sendMessageBtn {
-                width: 45px;
-                height: 45px;
-                font-size: 18px;
-            }
-
-            button {
-                padding: 10px;
-            }
-
-            .modal-content {
-                width: 90%;
+                padding: 10px; /* Ajusta padding em dispositivos móveis */
+                font-size: 14px; /* Reduz o tamanho da fonte */
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Rede Social GUN</h1>
+        <h1>Chat GUN</h1>
         <div id="messages"></div>
+        <div id="typingStatus"></div>
+        <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
+        
+        <div class="btn-group">
+            <button id="sendMessage">
+                <span class="icon">✉️</span> Postar Mensagem
+            </button>
+            <button id="profileButton">
+                <span class="icon">👤</span> Perfil
+            </button>
+        </div>
     </div>
 
-    <!-- Botão flutuante para abrir o modal -->
-    <div id="sendMessageBtn">+</div>
-
-    <!-- Modal para enviar mensagens -->
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <input id="yourName" type="text" placeholder="Digite seu nome" />
-            <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
-            <button id="sendMessage">Enviar Mensagem</button>
-        </div>
+    <!-- Modal para perfil -->
+    <div class="profile-modal" id="profileModal">
+        <span class="close-modal" id="closeModal">&times;</span>
+        <h2>Informações do Perfil</h2>
+        <label for="profileName">Nome:</label>
+        <input type="text" id="profileName" placeholder="Seu nome">
+        <label for="profileEmail">E-mail:</label>
+        <input type="email" id="profileEmail" placeholder="Seu e-mail">
+        <button id="saveProfile">Salvar Perfil</button>
     </div>
 
     <!-- Inclui GUN e especifica relay peer -->
     <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
+    <script src="https://cdn.rawgit.com/amark/gun/master/sea.js"></script>
     <script>
-        // Conectando ao relay peer para permitir sincronização entre dispositivos
         const gun = Gun({
-            peers: ['https://gun-manhattan.herokuapp.com/gun'] // Relay peer público
+            peers: ['https://gun-manhattan.herokuapp.com/gun']
         });
 
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
-        const yourNameInput = document.getElementById('yourName');
-        const modal = document.getElementById('myModal');
-        const sendButton = document.getElementById('sendMessageBtn');
-        const closeButton = document.getElementsByClassName('close')[0];
+        const profileButton = document.getElementById('profileButton');
+        const profileModal = document.getElementById('profileModal');
+        const closeModal = document.getElementById('closeModal');
+        const profileNameInput = document.getElementById('profileName');
+        const profileEmailInput = document.getElementById('profileEmail');
+        const saveProfileBtn = document.getElementById('saveProfile');
+        let typingTimeout;
 
-        // Função para adicionar mensagens ao chat
-        function addMessage(name, message) {
-            const msgElement = document.createElement('div');
-            msgElement.textContent = `${name}: ${message}`;
-            messagesDiv.appendChild(msgElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
+        const sharedSecret = 'minha-chave-compartilhada';
+
+        // Função para adicionar mensagens ao chat com ícone de exclusão
+        function addMessage(id, name, encryptedMessage) {
+            if (!encryptedMessage) return; // Verifica se a mensagem não é undefined
+
+            Gun.SEA.decrypt(encryptedMessage, sharedSecret).then(decryptedMessage => {
+                if (decryptedMessage) { // Verifica se a mensagem foi descriptografada corretamente
+                    const msgElement = document.createElement('div');
+                    msgElement.classList.add('message');
+                    msgElement.setAttribute('data-id', id); // Atribui data-id à mensagem
+                    const messageContent = document.createElement('span');
+                    messageContent.textContent = `${name}: ${decryptedMessage}`;
+
+                    // Verifica se o nome corresponde ao nome do usuário atual para exibir o ícone de exclusão
+                    const storedName = localStorage.getItem('profileName');
+                    if (storedName && storedName === name) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.classList.add('delete-btn');
+                        deleteBtn.innerHTML = '<img class="delete-icon" src="https://img.icons8.com/ios-filled/50/000000/trash.png" alt="Excluir" />';
+                        deleteBtn.addEventListener('click', () => deleteMessage(id));
+                        msgElement.appendChild(deleteBtn);
+                    }
+
+                    msgElement.appendChild(messageContent);
+                    messagesDiv.appendChild(msgElement);
+
+                    // Adiciona visibilidade do botão de exclusão ao passar o mouse
+                    msgElement.addEventListener('mouseenter', () => {
+                        if (deleteBtn) deleteBtn.style.visibility = 'visible';
+                    });
+                    msgElement.addEventListener('mouseleave', () => {
+                        if (deleteBtn) deleteBtn.style.visibility = 'hidden';
+                    });
+
+                    // Rola para a última mensagem
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+            }).catch(err => {
+                console.error("Erro ao descriptografar a mensagem:", err);
+            });
         }
 
-        // Escuta novas mensagens
-        gun.get('chat').on((data) => {
-            if (data && data.name && data.message) {
-                addMessage(data.name, data.message);
-            }
-        });
-
-        // Enviar mensagem
-        sendMessageBtn.addEventListener('click', () => {
-            const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
+        // Função para enviar mensagem
+        function sendMessage() {
+            const profileName = localStorage.getItem('profileName') || 'Usuário Anônimo';
             const message = messageInput.value.trim();
+            if (message) {
+                const encryptedMessage = Gun.SEA.encrypt(message, sharedSecret);
+                gun.get('chat').set({
+                    name: profileName,
+                    message: encryptedMessage
+                });
+                messageInput.value = ''; // Limpa o campo de entrada após o envio
+            }
+        }
 
-            // Validação de entrada
-            if (!name || !message) {
-                alert("Por favor, insira um nome e uma mensagem.");
-                return; // Sai da função se não há entradas válidas
+        // Função para excluir mensagem
+        function deleteMessage(id) {
+            gun.get('chat').get(id).put(null); // Remove a mensagem do GUN
+            const msgElement = document.querySelector(`[data-id="${id}"]`);
+            if (msgElement) {
+                msgElement.remove(); // Remove a mensagem da interface
+            }
+        }
+
+        // Função para salvar perfil
+        function saveProfile() {
+            const profileName = profileNameInput.value.trim();
+            const profileEmail = profileEmailInput.value.trim();
+
+            if (profileName) {
+                localStorage.setItem('profileName', profileName);
             }
 
-            // Envio da mensagem
-            gun.get('chat').put({ name, message })
-                .then(() => {
-                    messageInput.value = ''; // Limpa o campo de entrada
-                })
-                .catch(() => {
-                    alert("Erro ao enviar a mensagem.");
-                });
+            if (profileEmail) {
+                localStorage.setItem('profileEmail', profileEmail);
+            }
+
+            profileModal.style.display = 'none'; // Fecha o modal após salvar o perfil
+        }
+
+        // Função para carregar perfil salvo
+        function loadProfile() {
+            const savedName = localStorage.getItem('profileName');
+            const savedEmail = localStorage.getItem('profileEmail');
+
+            if (savedName) {
+                profileNameInput.value = savedName;
+            }
+
+            if (savedEmail) {
+                profileEmailInput.value = savedEmail;
+            }
+        }
+
+        // Abrir modal de perfil
+        profileButton.addEventListener('click', () => {
+            profileModal.style.display = 'block';
         });
 
-        // Abre o modal
-        sendButton.onclick = function() {
-            modal.style.display = "flex";
-        }
+        // Fechar modal de perfil
+        closeModal.addEventListener('click', () => {
+            profileModal.style.display = 'none';
+        });
 
-        // Fecha o modal
-        closeButton.onclick = function() {
-            modal.style.display = "none";
-        }
+        // Salvar perfil ao clicar no botão
+        saveProfileBtn.addEventListener('click', saveProfile);
 
-        // Fecha o modal ao clicar fora dele
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
+        // Carregar perfil salvo ao iniciar
+        loadProfile();
+
+        // Ouve as mensagens do GUN
+        gun.get('chat').map().on((data, id) => {
+            if (data && data.message) { // Verifica se a mensagem não é undefined
+                addMessage(id, data.name, data.message);
             }
-        }
+        });
+
+        // Evento de envio de mensagem
+        sendMessageBtn.addEventListener('click', sendMessage);
+
+        // Envio de mensagem ao pressionar Enter
+        messageInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
     </script>
 </body>
 </html>
