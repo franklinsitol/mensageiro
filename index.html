@@ -51,18 +51,25 @@
             border-radius: 10px; /* Bordas arredondadas */
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             border: 1px solid #eee;
+            position: relative; /* Para posicionar o botão de exclusão */
         }
         .delete-btn {
-            background-color: #333; /* Botão preto */
-            color: white;
+            background-color: transparent; /* Fundo transparente */
             border: none;
-            border-radius: 5px; /* Bordas arredondadas */
-            padding: 5px 10px;
             cursor: pointer;
-            transition: background 0.3s;
+            padding: 0;
+            margin-left: 10px; /* Espaçamento à esquerda do ícone */
+            display: none; /* Inicialmente oculto */
+            position: absolute; /* Para que fique posicionado corretamente */
+            right: 10px; /* Espaçamento da borda direita */
+            top: 10px; /* Alinhado ao topo da mensagem */
         }
-        .delete-btn:hover {
-            background-color: #555;
+        .message:hover .delete-btn {
+            display: block; /* Exibe ao passar o mouse */
+        }
+        .delete-icon {
+            width: 20px; /* Largura do ícone */
+            height: 20px; /* Altura do ícone */
         }
         input, button {
             padding: 10px;
@@ -185,9 +192,14 @@
             const storedName = localStorage.getItem('profileName');
             if (storedName && name === storedName) {
                 const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'Excluir';
                 deleteBtn.classList.add('delete-btn');
                 deleteBtn.onclick = () => deleteMessage(id); // Adiciona evento para excluir a mensagem
+
+                const deleteIcon = document.createElement('img');
+                deleteIcon.src = 'https://img.icons8.com/ios-filled/50/000000/trash.png'; // Link para ícone de lixeira
+                deleteIcon.classList.add('delete-icon');
+                deleteBtn.appendChild(deleteIcon);
+
                 msgElement.appendChild(deleteBtn);
             }
 
@@ -224,77 +236,57 @@
             }
 
             Gun.SEA.encrypt(message, sharedSecret).then((encryptedMessage) => {
-                gun.get('chat').set({ name: profileName, message: encryptedMessage })
-                    .then(() => {
-                        messageInput.value = '';
-                    })
-                    .catch(() => {
-                        alert("Erro ao enviar a mensagem.");
-                    });
+                gun.get('chat').set({ name: profileName, message: encryptedMessage });
+                messageInput.value = ''; // Limpa o campo de entrada de mensagem
+            }).catch((err) => {
+                console.error("Erro ao criptografar mensagem", err);
             });
         }
 
         // Função para excluir mensagem
         function deleteMessage(id) {
             gun.get('chat').get(id).put(null); // Remove a mensagem do GUN
-            const messageElement = document.querySelector(`[data-id="${id}"]`);
+            const messageElement = document.querySelector(`.message[data-id="${id}"]`);
             if (messageElement) {
-                messagesDiv.removeChild(messageElement); // Remove visualmente a mensagem da interface
+                messageElement.remove(); // Remove a mensagem da visualização
             }
         }
 
-        // Função para salvar o perfil
-        function saveProfile() {
-            const profileName = profileNameInput.value.trim();
-            const profileEmail = profileEmailInput.value.trim();
+        // Evento de clique no botão de enviar mensagem
+        sendMessageBtn.onclick = sendMessage;
 
-            if (profileName) {
-                localStorage.setItem('profileName', profileName);
+        // Evento de clique no botão de perfil
+        profileButton.onclick = () => {
+            profileModal.style.display = 'block'; // Mostra o modal
+        };
+
+        // Evento de clique no botão de fechar o modal
+        closeModal.onclick = () => {
+            profileModal.style.display = 'none'; // Fecha o modal
+        };
+
+        // Evento de salvar o perfil
+        saveProfileBtn.onclick = () => {
+            const name = profileNameInput.value.trim();
+            const email = profileEmailInput.value.trim();
+            if (name) {
+                localStorage.setItem('profileName', name);
+                localStorage.setItem('profileEmail', email);
+                profileModal.style.display = 'none'; // Fecha o modal
+                profileNameInput.value = ''; // Limpa o campo de nome
+                profileEmailInput.value = ''; // Limpa o campo de email
+            } else {
+                alert("Por favor, insira um nome.");
             }
+        };
 
-            if (profileEmail) {
-                localStorage.setItem('profileEmail', profileEmail);
-            }
-
-            profileModal.style.display = 'none'; // Fecha o modal após salvar o perfil
-        }
-
-        // Função para carregar perfil salvo
-        function loadProfile() {
-            const savedName = localStorage.getItem('profileName');
-            const savedEmail = localStorage.getItem('profileEmail');
-
-            if (savedName) {
-                profileNameInput.value = savedName;
-            }
-
-            if (savedEmail) {
-                profileEmailInput.value = savedEmail;
-            }
-        }
-
-        // Abrir modal de perfil
-        profileButton.addEventListener('click', () => {
-            profileModal.style.display = 'block';
-        });
-
-        // Fechar modal de perfil
-        closeModal.addEventListener('click', () => {
-            profileModal.style.display = 'none';
-        });
-
-        // Salvar perfil ao clicar no botão
-        saveProfileBtn.addEventListener('click', saveProfile);
-
-        // Carregar perfil salvo ao iniciar
-        loadProfile();
-
-        sendMessageBtn.addEventListener('click', sendMessage);
-
-        messageInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+        // Monitorar digitação
+        messageInput.addEventListener('input', () => {
+            clearTimeout(typingTimeout);
+            typingStatus.innerHTML = 'Você está digitando...';
+            typingTimeout = setTimeout(() => {
+                typingStatus.innerHTML = '';
+            }, 2000);
         });
     </script>
 </body>
