@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat GUN com Imagens</title>
+    <title>Chat GUN</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -58,11 +58,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>Chat GUN com Imagens</h1>
+        <h1>Chat GUN</h1>
         <input id="yourName" type="text" placeholder="Digite seu nome" />
         <div id="messages"></div>
         <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
-        <input id="imageInput" type="file" accept="image/*" />
         <button id="sendMessage">Enviar Mensagem</button>
     </div>
 
@@ -78,7 +77,6 @@
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
         const yourNameInput = document.getElementById('yourName');
-        const imageInput = document.getElementById('imageInput');
 
         // Função para adicionar mensagens ao chat
         function addMessage(name, message) {
@@ -88,28 +86,10 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
         }
 
-        // Função para adicionar imagem ao chat
-        function addImageMessage(name, imageUrl) {
-            const imgElement = document.createElement('img');
-            imgElement.src = imageUrl;
-            imgElement.alt = "Imagem enviada";
-            imgElement.style.maxWidth = '100%';
-            imgElement.style.borderRadius = '10px';
-            const msgElement = document.createElement('div');
-            msgElement.textContent = `${name}: `;
-            msgElement.appendChild(imgElement);
-            messagesDiv.appendChild(msgElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
-        }
-
         // Escuta novas mensagens
         gun.get('chat').on((data) => {
             if (data && data.name && data.message) {
-                if (data.message.startsWith('data:image/')) {
-                    addImageMessage(data.name, data.message);
-                } else {
-                    addMessage(data.name, data.message);
-                }
+                addMessage(data.name, data.message);
             }
         });
 
@@ -117,37 +97,21 @@
         sendMessageBtn.addEventListener('click', () => {
             const name = yourNameInput.value.trim() || 'Usuário Desconhecido';
             const message = messageInput.value.trim();
-            const imageFile = imageInput.files[0];
 
             // Validação de entrada
-            if (!name || (!message && !imageFile)) {
-                alert("Por favor, insira um nome e uma mensagem ou selecione uma imagem.");
+            if (!name || !message) {
+                alert("Por favor, insira um nome e uma mensagem.");
                 return; // Sai da função se não há entradas válidas
             }
 
-            // Envio da imagem
-            if (imageFile) {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const imageData = reader.result;
-                    gun.get('chat').put({ name, message: imageData }) // Adiciona a imagem ao GUN
-                        .then(() => {
-                            imageInput.value = ''; // Limpa o campo de arquivo
-                        })
-                        .catch(() => {
-                            alert("Erro ao enviar a imagem.");
-                        });
-                };
-                reader.readAsDataURL(imageFile); // Lê o arquivo como URL
-            } else if (message) {
-                gun.get('chat').put({ name, message }) // Adiciona a mensagem ao GUN
-                    .then(() => {
-                        messageInput.value = ''; // Limpa o campo de entrada
-                    })
-                    .catch(() => {
-                        alert("Erro ao enviar a mensagem.");
-                    });
-            }
+            // Envio da mensagem
+            gun.get('chat').set({ name, message }) // Adiciona a mensagem ao GUN
+                .then(() => {
+                    messageInput.value = ''; // Limpa o campo de entrada
+                })
+                .catch(() => {
+                    alert("Erro ao enviar a mensagem.");
+                });
         });
     </script>
 </body>
