@@ -66,9 +66,14 @@
         <button id="sendMessage">Enviar Mensagem</button>
     </div>
 
+    <!-- Inclui GUN e especifica relay peer -->
     <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
     <script>
-        const gun = Gun();
+        // Conectando ao relay peer para permitir sincronização entre dispositivos
+        const gun = Gun({
+            peers: ['https://gun-manhattan.herokuapp.com/gun'] // Relay peer público
+        });
+        
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessage');
