@@ -1,271 +1,204 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beemote Chat</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #fff; /* Fundo branco */
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            background-color: #fff; /* Fundo branco */
-            border-radius: 20px; /* Bordas arredondadas */
-            padding: 20px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            border: 1px solid #ddd; /* Borda clara */
-        }
-        h1 {
-            margin: 0 0 20px;
-            font-size: 24px;
-            color: #333;
-        }
-        #messages {
-            background-color: #f9f9f9;
-            border-radius: 10px; /* Bordas arredondadas */
-            padding: 10px;
-            height: 300px;
-            overflow-y: scroll;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-        }
-        .message {
-            position: relative;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 10px; /* Bordas arredondadas */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border: 1px solid #eee;
-        }
-        .delete-btn {
-            display: none; /* Esconder botão de exclusão por padrão */
-            background-color: transparent; /* Fundo transparente */
-            border: none; /* Sem borda */
-            cursor: pointer;
-            position: absolute; /* Posicionar em relação à mensagem */
-            right: 10px; /* Espaço do lado direito */
-            bottom: 10px; /* Espaço do fundo */
-            transition: opacity 0.3s;
-        }
-        .message:hover .delete-btn {
-            display: block; /* Mostrar botão de exclusão ao passar o mouse na mensagem */
-        }
-        input, button {
-            padding: 10px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 5px; /* Bordas arredondadas */
-            width: calc(100% - 22px);
-            font-size: 16px;
-        }
-        input {
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            color: #333;
-        }
-        button {
-            background-color: #333; /* Botão preto */
-            color: white;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background-color: #555;
-        }
-        button .icon {
-            margin-right: 8px;
-        }
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .profile-modal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #fff; /* Fundo branco */
-            border-radius: 10px; /* Bordas arredondadas */
-            padding: 20px;
-            max-width: 300px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-        .profile-modal input {
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            color: #333;
-            width: 100%;
-        }
-        .profile-modal h2 {
-            margin-top: 0;
-        }
-        .close-modal {
-            float: right;
-            cursor: pointer;
-            color: #e74c3c;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat P2P com QR Code</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 500px; margin: auto; padding: 20px; background: #fff; min-height: 100vh; display: flex; flex-direction: column; gap: 20px; }
+    input, button, textarea { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+    .hidden { display: none; }
+    .contact { padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; cursor: pointer; background: #e9e9e9; }
+    .message { margin: 5px 0; padding: 10px; background: #def; border-radius: 5px; }
+    .you { background: #cce5ff; text-align: right; }
+    #qrcode img { max-width: 100%; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Beemote Chat</h1>
-        <div id="messages"></div>
-        <div id="typingStatus"></div>
-        <input id="messageInput" type="text" placeholder="Digite sua mensagem" />
-        
-        <div class="btn-group">
-            <button id="sendMessage">
-                <span class="icon">✉️</span> Postar Mensagem
-            </button>
-            <button id="profileButton">
-                <span class="icon">👤</span> Perfil
-            </button>
-        </div>
+  <div class="container">
+    <!-- Login -->
+    <div id="login">
+      <h2>Cadastro</h2>
+      <input id="nome" placeholder="Nome" />
+      <input id="apelido" placeholder="Apelido" />
+      <input id="pin" placeholder="PIN" type="password" />
+      <button onclick="cadastrar()">Entrar</button>
     </div>
 
-    <!-- Modal para perfil -->
-    <div class="profile-modal" id="profileModal">
-        <span class="close-modal" id="closeModal">&times;</span>
-        <h2>Informações do Perfil</h2>
-        <label for="profileName">Nome:</label>
-        <input type="text" id="profileName" placeholder="Seu nome">
-        <label for="profileEmail">E-mail:</label>
-        <input type="email" id="profileEmail" placeholder="Seu e-mail">
-        <button id="saveProfile">Salvar Perfil</button>
+    <!-- Perfil -->
+    <div id="perfil" class="hidden">
+      <h2>Meu Perfil</h2>
+      <p id="meuNome"></p>
+      <div id="qrcode"></div>
+      <button onclick="abrirScanner()">Adicionar Contato (QR)</button>
+      <button onclick="mostrarContatos()">Ver Contatos</button>
+      <button onclick="sair()">Sair</button>
     </div>
 
-    <!-- Inclui GUN e especifica relay peer -->
-    <script src="https://cdn.rawgit.com/amark/gun/master/gun.js"></script>
-    <script src="https://cdn.rawgit.com/amark/gun/master/sea.js"></script>
-    <script>
-        const gun = Gun({
-            peers: ['https://gun-manhattan.herokuapp.com/gun']
-        });
+    <!-- Scanner QR -->
+    <div id="scanner" class="hidden">
+      <h2>Escaneie o QR Code</h2>
+      <video id="video" width="100%"></video>
+      <button onclick="fecharScanner()">Cancelar</button>
+    </div>
 
-        const messagesDiv = document.getElementById('messages');
-        const messageInput = document.getElementById('messageInput');
-        const sendMessageBtn = document.getElementById('sendMessage');
-        const profileButton = document.getElementById('profileButton');
-        const profileModal = document.getElementById('profileModal');
-        const closeModal = document.getElementById('closeModal');
-        const profileNameInput = document.getElementById('profileName');
-        const profileEmailInput = document.getElementById('profileEmail');
-        const saveProfileBtn = document.getElementById('saveProfile');
-        let typingTimeout;
+    <!-- Contatos -->
+    <div id="contatos" class="hidden">
+      <h2>Contatos</h2>
+      <div id="listaContatos"></div>
+      <button onclick="voltarPerfil()">Voltar</button>
+    </div>
 
-        const sharedSecret = 'minha-chave-compartilhada';
+    <!-- Chat -->
+    <div id="chat" class="hidden">
+      <h2 id="chatCom"></h2>
+      <div id="chatBox" style="flex: 1; overflow-y: auto; max-height: 300px;"></div>
+      <textarea id="mensagem" rows="2" placeholder="Digite uma mensagem..."></textarea>
+      <button onclick="enviarMensagem()">Enviar</button>
+      <button onclick="sairChat()">Voltar</button>
+    </div>
+  </div>
 
-        // Função para adicionar mensagens ao chat com botão de exclusão
-        function addMessage(id, name, message) {
-            const msgElement = document.createElement('div');
-            msgElement.classList.add('message');
-            msgElement.setAttribute('data-id', id); // Atribui data-id à mensagem
-            const messageContent = document.createElement('span');
-            messageContent.textContent = `${name}: ${message}`;
+  <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+  <script>
+    let usuario = null;
+    let contatos = JSON.parse(localStorage.getItem('contatos')) || [];
+    let conexoes = {};
+    let chatAtual = null;
 
-            // Verifica se o nome corresponde ao nome do usuário atual para exibir o botão de exclusão
-            const storedName = localStorage.getItem('profileName');
-            if (storedName && name === storedName) {
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = '🗑️'; // Ícone de lixeira
-                deleteBtn.classList.add('delete-btn');
-                deleteBtn.onclick = () => deleteMessage(id); // Adiciona evento para excluir a mensagem
-                msgElement.appendChild(deleteBtn);
-            }
+    function cadastrar() {
+      const nome = document.getElementById('nome').value;
+      const apelido = document.getElementById('apelido').value;
+      const pin = document.getElementById('pin').value;
+      if (nome && apelido && pin) {
+        usuario = { nome, apelido };
+        localStorage.setItem('usuario', JSON.stringify(usuario));
+        localStorage.setItem('pin', pin);
+        mostrarPerfil();
+      }
+    }
 
-            msgElement.appendChild(messageContent);
-            messagesDiv.appendChild(msgElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    function mostrarPerfil() {
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('perfil').classList.remove('hidden');
+      document.getElementById('meuNome').textContent = `${usuario.nome} (${usuario.apelido})`;
+      QRCode.toDataURL(JSON.stringify({ nome: usuario.nome, apelido: usuario.apelido }), (err, url) => {
+        if (err) {
+          console.error('Erro ao gerar QR Code:', err);
+          return;
         }
+        document.getElementById('qrcode').innerHTML = `<img src="${url}" />`;
+      });
+    }
 
-        // Função para carregar histórico de mensagens
-        function loadMessages() {
-            gun.get('chat').map().once((data, id) => {
-                if (data && data.name && data.message) {
-                    Gun.SEA.decrypt(data.message, sharedSecret).then((decryptedMessage) => {
-                        if (decryptedMessage) {
-                            addMessage(id, data.name, decryptedMessage);
-                        }
-                    }).catch((err) => {
-                        console.error("Erro ao descriptografar mensagem", err);
-                    });
-                }
-            });
+    function abrirScanner() {
+      document.getElementById('perfil').classList.add('hidden');
+      document.getElementById('scanner').classList.remove('hidden');
+      const qr = new Html5Qrcode("video");
+      qr.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decoded) => {
+        try {
+          const novoContato = JSON.parse(decoded);
+          if (!contatos.find(c => c.apelido === novoContato.apelido)) {
+            contatos.push(novoContato);
+            localStorage.setItem('contatos', JSON.stringify(contatos));
+            alert('Contato adicionado: ' + novoContato.apelido);
+          }
+        } catch (e) {
+          alert('Erro ao ler QR Code');
         }
+        qr.stop().then(() => mostrarPerfil());
+      });
+    }
 
-        loadMessages();
+    function fecharScanner() {
+      location.reload();
+    }
 
-        // Função para enviar mensagem
-        function sendMessage() {
-            const profileName = localStorage.getItem('profileName') || 'Usuário Desconhecido';
-            const message = messageInput.value.trim();
+    function mostrarContatos() {
+      document.getElementById('perfil').classList.add('hidden');
+      document.getElementById('contatos').classList.remove('hidden');
+      const lista = document.getElementById('listaContatos');
+      lista.innerHTML = '';
+      contatos.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'contact';
+        div.textContent = `${c.nome} (${c.apelido})`;
+        div.onclick = () => abrirChat(c);
+        lista.appendChild(div);
+      });
+    }
 
-            if (!message) {
-                alert("Por favor, insira uma mensagem.");
-                return;
-            }
+    function voltarPerfil() {
+      document.getElementById('contatos').classList.add('hidden');
+      document.getElementById('perfil').classList.remove('hidden');
+    }
 
-            Gun.SEA.encrypt(message, sharedSecret).then((encryptedMessage) => {
-                gun.get('chat').set({ name: profileName, message: encryptedMessage })
-                    .then(() => {
-                        messageInput.value = '';
-                    })
-                    .catch(() => {
-                        alert("Erro ao enviar a mensagem.");
-                    });
-            });
+    function abrirChat(contato) {
+      chatAtual = contato;
+      document.getElementById('contatos').classList.add('hidden');
+      document.getElementById('chat').classList.remove('hidden');
+      document.getElementById('chatCom').textContent = `Chat com ${contato.apelido}`;
+      renderizarMensagens();
+    }
+
+    function sairChat() {
+      document.getElementById('chat').classList.add('hidden');
+      document.getElementById('contatos').classList.remove('hidden');
+    }
+
+    function renderizarMensagens() {
+      const box = document.getElementById('chatBox');
+      box.innerHTML = '';
+      const todas = JSON.parse(localStorage.getItem('mensagens') || '{}');
+      const msgs = todas[chatAtual.apelido] || [];
+      const agora = Date.now();
+      const filtradas = msgs.filter(m => agora - m.ts < 86400000);
+      todas[chatAtual.apelido] = filtradas;
+      localStorage.setItem('mensagens', JSON.stringify(todas));
+      filtradas.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'message' + (m.de === usuario.apelido ? ' you' : '');
+        div.textContent = m.texto;
+        box.appendChild(div);
+      });
+    }
+
+    function enviarMensagem() {
+      const texto = document.getElementById('mensagem').value;
+      if (!texto) return;
+      const todas = JSON.parse(localStorage.getItem('mensagens') || '{}');
+      todas[chatAtual.apelido] = todas[chatAtual.apelido] || [];
+      todas[chatAtual.apelido].push({ texto, de: usuario.apelido, ts: Date.now() });
+      localStorage.setItem('mensagens', JSON.stringify(todas));
+      document.getElementById('mensagem').value = '';
+      renderizarMensagens();
+    }
+
+    function sair() {
+      localStorage.clear();
+      location.reload();
+    }
+
+    // Inicialização
+    window.onload = () => {
+      const dados = JSON.parse(localStorage.getItem('usuario'));
+      const pinSalvo = localStorage.getItem('pin');
+      if (dados && pinSalvo) {
+        const tentativa = prompt("Digite seu PIN para acessar:");
+        if (tentativa === pinSalvo) {
+          usuario = dados;
+          mostrarPerfil();
+        } else {
+          alert("PIN incorreto. Acesso negado.");
         }
-
-        // Função para excluir mensagem
-        function deleteMessage(id) {
-            gun.get('chat').get(id).put(null); // Remove a mensagem do GUN
-        }
-
-        sendMessageBtn.addEventListener('click', sendMessage);
-
-        // Função para abrir o modal de perfil
-        profileButton.addEventListener('click', () => {
-            profileModal.style.display = 'block';
-            const storedName = localStorage.getItem('profileName');
-            const storedEmail = localStorage.getItem('profileEmail');
-            profileNameInput.value = storedName || '';
-            profileEmailInput.value = storedEmail || '';
-        });
-
-        // Função para fechar o modal de perfil
-        closeModal.addEventListener('click', () => {
-            profileModal.style.display = 'none';
-        });
-
-        // Função para salvar perfil
-        saveProfileBtn.addEventListener('click', () => {
-            const name = profileNameInput.value;
-            const email = profileEmailInput.value;
-            localStorage.setItem('profileName', name);
-            localStorage.setItem('profileEmail', email);
-            profileModal.style.display = 'none';
-            alert("Perfil salvo com sucesso!");
-        });
-    </script>
+      }
+    }
+  </script>
 </body>
 </html>
