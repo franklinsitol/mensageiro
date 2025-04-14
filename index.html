@@ -16,6 +16,7 @@
     .message { margin: 5px 0; padding: 10px; background: #def; border-radius: 5px; }
     .you { background: #cce5ff; text-align: right; }
     #qrcode img { max-width: 100%; }
+    .inline-btn { margin-top: 5px; font-size: 0.9em; background: #28a745; }
   </style>
 </head>
 <body>
@@ -137,7 +138,18 @@
         div.className = 'contact';
         div.textContent = `${c.nome} (${c.apelido})`;
         div.onclick = () => abrirChat(c);
+
+        const btn = document.createElement('button');
+        btn.className = 'inline-btn';
+        btn.textContent = 'Gerar Link de Conexão';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const url = `${location.origin}${location.pathname}?apelido=${encodeURIComponent(c.apelido)}`;
+          navigator.clipboard.writeText(url).then(() => alert('Link copiado: ' + url));
+        };
+
         lista.appendChild(div);
+        lista.appendChild(btn);
       });
     }
 
@@ -200,6 +212,13 @@
         if (tentativa === pinSalvo) {
           usuario = dados;
           mostrarPerfil();
+
+          const params = new URLSearchParams(window.location.search);
+          const apelidoParam = params.get("apelido");
+          if (apelidoParam) {
+            const contato = contatos.find(c => c.apelido === apelidoParam);
+            if (contato) abrirChat(contato);
+          }
         } else {
           alert("PIN incorreto. Acesso negado.");
         }
