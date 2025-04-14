@@ -42,7 +42,7 @@
     <!-- Scanner QR -->
     <div id="scanner" class="hidden">
       <h2>Escaneie o QR Code</h2>
-      <video id="video" width="100%"></video>
+      <div id="reader" style="width:100%"></div>
       <button onclick="fecharScanner()">Cancelar</button>
     </div>
 
@@ -100,20 +100,27 @@
     function abrirScanner() {
       document.getElementById('perfil').classList.add('hidden');
       document.getElementById('scanner').classList.remove('hidden');
-      const qr = new Html5Qrcode("video");
-      qr.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decoded) => {
-        try {
-          const novoContato = JSON.parse(decoded);
-          if (!contatos.find(c => c.apelido === novoContato.apelido)) {
-            contatos.push(novoContato);
-            localStorage.setItem('contatos', JSON.stringify(contatos));
-            alert('Contato adicionado: ' + novoContato.apelido);
+      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decoded) => {
+          try {
+            const novoContato = JSON.parse(decoded);
+            if (!contatos.find(c => c.apelido === novoContato.apelido)) {
+              contatos.push(novoContato);
+              localStorage.setItem('contatos', JSON.stringify(contatos));
+              alert('Contato adicionado: ' + novoContato.apelido);
+            }
+          } catch (e) {
+            alert('Erro ao ler QR Code');
           }
-        } catch (e) {
-          alert('Erro ao ler QR Code');
+          html5QrCode.stop().then(() => mostrarPerfil());
+        },
+        (err) => {
+          console.warn('Erro na leitura:', err);
         }
-        qr.stop().then(() => mostrarPerfil());
-      });
+      );
     }
 
     function fecharScanner() {
@@ -185,7 +192,6 @@
       location.reload();
     }
 
-    // Inicialização
     window.onload = () => {
       const dados = JSON.parse(localStorage.getItem('usuario'));
       const pinSalvo = localStorage.getItem('pin');
