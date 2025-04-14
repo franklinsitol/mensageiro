@@ -17,10 +17,23 @@
     .you { background: #cce5ff; text-align: right; }
     #qrcode img { max-width: 100%; }
     .inline-btn { margin-top: 5px; font-size: 0.9em; background: #28a745; }
+    .tutorial { background: #fff3cd; padding: 10px; border-left: 5px solid #ffc107; font-size: 0.9em; }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Tutorial -->
+    <div class="tutorial">
+      <strong>📚 Tutorial Rápido:</strong><br>
+      1️⃣ Preencha seu <strong>nome</strong>, <strong>apelido</strong> e um <strong>PIN</strong> de segurança.<br>
+      2️⃣ Clique em <strong>"Entrar"</strong> para gerar seu QR Code de contato.<br>
+      3️⃣ Para adicionar alguém, clique em <strong>"Adicionar Contato (QR)"</strong> e escaneie o QR Code da outra pessoa.<br>
+      4️⃣ Vá em <strong>"Ver Contatos"</strong> para visualizar os contatos adicionados.<br>
+      5️⃣ Clique sobre um contato para iniciar o chat.<br>
+      6️⃣ Use o botão <strong>"Gerar Link de Conexão"</strong> para enviar um link direto de conversa para outra pessoa.<br>
+      🔐 Suas conversas ficam salvas localmente e visíveis por até 24h.
+    </div>
+
     <!-- Login -->
     <div id="login">
       <h2>Cadastro</h2>
@@ -37,6 +50,7 @@
       <div id="qrcode"></div>
       <button onclick="abrirScanner()">Adicionar Contato (QR)</button>
       <button onclick="mostrarContatos()">Ver Contatos</button>
+      <button onclick="gerarLinkConexao()">Gerar Link de Conexão</button>
       <button onclick="sair()">Sair</button>
     </div>
 
@@ -68,161 +82,13 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
   <script>
-    let usuario = null;
-    let contatos = JSON.parse(localStorage.getItem('contatos')) || [];
-    let conexoes = {};
-    let chatAtual = null;
-
-    function cadastrar() {
-      const nome = document.getElementById('nome').value;
-      const apelido = document.getElementById('apelido').value;
-      const pin = document.getElementById('pin').value;
-      if (nome && apelido && pin) {
-        usuario = { nome, apelido };
-        localStorage.setItem('usuario', JSON.stringify(usuario));
-        localStorage.setItem('pin', pin);
-        mostrarPerfil();
-      }
-    }
-
-    function mostrarPerfil() {
-      document.getElementById('login').classList.add('hidden');
-      document.getElementById('perfil').classList.remove('hidden');
-      document.getElementById('meuNome').textContent = `${usuario.nome} (${usuario.apelido})`;
-      QRCode.toDataURL(JSON.stringify({ nome: usuario.nome, apelido: usuario.apelido }), (err, url) => {
-        if (err) {
-          console.error('Erro ao gerar QR Code:', err);
-          return;
-        }
-        document.getElementById('qrcode').innerHTML = `<img src="${url}" />`;
-      });
-    }
-
-    function abrirScanner() {
-      document.getElementById('perfil').classList.add('hidden');
-      document.getElementById('scanner').classList.remove('hidden');
-      const html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decoded) => {
-          try {
-            const novoContato = JSON.parse(decoded);
-            if (!contatos.find(c => c.apelido === novoContato.apelido)) {
-              contatos.push(novoContato);
-              localStorage.setItem('contatos', JSON.stringify(contatos));
-              alert('Contato adicionado: ' + novoContato.apelido);
-            }
-          } catch (e) {
-            alert('Erro ao ler QR Code');
-          }
-          html5QrCode.stop().then(() => mostrarPerfil());
-        },
-        (err) => {
-          console.warn('Erro na leitura:', err);
-        }
-      );
-    }
-
-    function fecharScanner() {
-      location.reload();
-    }
-
-    function mostrarContatos() {
-      document.getElementById('perfil').classList.add('hidden');
-      document.getElementById('contatos').classList.remove('hidden');
-      const lista = document.getElementById('listaContatos');
-      lista.innerHTML = '';
-      contatos.forEach(c => {
-        const div = document.createElement('div');
-        div.className = 'contact';
-        div.textContent = `${c.nome} (${c.apelido})`;
-        div.onclick = () => abrirChat(c);
-
-        const btn = document.createElement('button');
-        btn.className = 'inline-btn';
-        btn.textContent = 'Gerar Link de Conexão';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          const url = `${location.origin}${location.pathname}?apelido=${encodeURIComponent(c.apelido)}`;
-          navigator.clipboard.writeText(url).then(() => alert('Link copiado: ' + url));
-        };
-
-        lista.appendChild(div);
-        lista.appendChild(btn);
-      });
-    }
-
-    function voltarPerfil() {
-      document.getElementById('contatos').classList.add('hidden');
-      document.getElementById('perfil').classList.remove('hidden');
-    }
-
-    function abrirChat(contato) {
-      chatAtual = contato;
-      document.getElementById('contatos').classList.add('hidden');
-      document.getElementById('chat').classList.remove('hidden');
-      document.getElementById('chatCom').textContent = `Chat com ${contato.apelido}`;
-      renderizarMensagens();
-    }
-
-    function sairChat() {
-      document.getElementById('chat').classList.add('hidden');
-      document.getElementById('contatos').classList.remove('hidden');
-    }
-
-    function renderizarMensagens() {
-      const box = document.getElementById('chatBox');
-      box.innerHTML = '';
-      const todas = JSON.parse(localStorage.getItem('mensagens') || '{}');
-      const msgs = todas[chatAtual.apelido] || [];
-      const agora = Date.now();
-      const filtradas = msgs.filter(m => agora - m.ts < 86400000);
-      todas[chatAtual.apelido] = filtradas;
-      localStorage.setItem('mensagens', JSON.stringify(todas));
-      filtradas.forEach(m => {
-        const div = document.createElement('div');
-        div.className = 'message' + (m.de === usuario.apelido ? ' you' : '');
-        div.textContent = m.texto;
-        box.appendChild(div);
-      });
-    }
-
-    function enviarMensagem() {
-      const texto = document.getElementById('mensagem').value;
-      if (!texto) return;
-      const todas = JSON.parse(localStorage.getItem('mensagens') || '{}');
-      todas[chatAtual.apelido] = todas[chatAtual.apelido] || [];
-      todas[chatAtual.apelido].push({ texto, de: usuario.apelido, ts: Date.now() });
-      localStorage.setItem('mensagens', JSON.stringify(todas));
-      document.getElementById('mensagem').value = '';
-      renderizarMensagens();
-    }
-
-    function sair() {
-      localStorage.clear();
-      location.reload();
-    }
-
-    window.onload = () => {
-      const dados = JSON.parse(localStorage.getItem('usuario'));
-      const pinSalvo = localStorage.getItem('pin');
-      if (dados && pinSalvo) {
-        const tentativa = prompt("Digite seu PIN para acessar:");
-        if (tentativa === pinSalvo) {
-          usuario = dados;
-          mostrarPerfil();
-
-          const params = new URLSearchParams(window.location.search);
-          const apelidoParam = params.get("apelido");
-          if (apelidoParam) {
-            const contato = contatos.find(c => c.apelido === apelidoParam);
-            if (contato) abrirChat(contato);
-          }
-        } else {
-          alert("PIN incorreto. Acesso negado.");
-        }
-      }
+    function gerarLinkConexao() {
+      const apelido = localStorage.getItem("apelido");
+      const dados = localStorage.getItem("meuContato");
+      if (!dados || !apelido) return alert("Erro ao gerar o link");
+      const url = `${location.origin}${location.pathname}?contato=${encodeURIComponent(dados)}`;
+      navigator.clipboard.writeText(url);
+      alert("Link copiado para a área de transferência:\n" + url);
     }
   </script>
 </body>
