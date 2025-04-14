@@ -50,7 +50,6 @@
       <div id="qrcode"></div>
       <button onclick="abrirScanner()">Adicionar Contato (QR)</button>
       <button onclick="mostrarContatos()">Ver Contatos</button>
-      <button onclick="gerarLinkConexao()">Gerar Link de Conexão</button>
       <button onclick="sair()">Sair</button>
     </div>
 
@@ -82,14 +81,121 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
   <script>
-    function gerarLinkConexao() {
-      const apelido = localStorage.getItem("apelido");
-      const dados = localStorage.getItem("meuContato");
-      if (!dados || !apelido) return alert("Erro ao gerar o link");
-      const url = `${location.origin}${location.pathname}?contato=${encodeURIComponent(dados)}`;
-      navigator.clipboard.writeText(url);
-      alert("Link copiado para a área de transferência:\n" + url);
+    let usuario = {};
+    let contatos = [];
+    let currentChat = null;
+
+    // Função para cadastro
+    function cadastrar() {
+      const nome = document.getElementById('nome').value;
+      const apelido = document.getElementById('apelido').value;
+      const pin = document.getElementById('pin').value;
+
+      if (!nome || !apelido || !pin) {
+        alert("Preencha todos os campos!");
+        return;
+      }
+
+      usuario = { nome, apelido, pin }; // Salva os dados do usuário localmente
+      sessionStorage.setItem("usuario", JSON.stringify(usuario)); // Salva no armazenamento local
+
+      document.getElementById('login').classList.add('hidden'); // Esconde tela de login
+      document.getElementById('perfil').classList.remove('hidden'); // Mostra tela de perfil
+      document.getElementById('meuNome').innerText = `Nome: ${nome} | Apelido: ${apelido}`; // Exibe nome e apelido no perfil
+      gerarQRCode();
     }
+
+    // Gera QR Code para o usuário
+    function gerarQRCode() {
+      QRCode.toDataURL(JSON.stringify(usuario), function (err, url) {
+        document.getElementById('qrcode').innerHTML = `<img src="${url}" />`;
+      });
+    }
+
+    // Abre scanner para adicionar contato
+    function abrirScanner() {
+      document.getElementById('scanner').classList.remove('hidden');
+      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start({ facingMode: "environment" }, {
+        fps: 10, // frames per second
+        qrbox: 250, // tamanho da área do QR code
+      }, qrCodeMessage => {
+        const contato = JSON.parse(qrCodeMessage);
+        if (contato) {
+          contatos.push(contato);
+          alert("Contato adicionado!");
+          document.getElementById('scanner').classList.add('hidden');
+        }
+      }).catch(err => {
+        alert("Erro ao abrir a câmera: " + err);
+      });
+    }
+
+    // Fecha scanner
+    function fecharScanner() {
+      document.getElementById('scanner').classList.add('hidden');
+    }
+
+    // Mostra lista de contatos
+    function mostrarContatos() {
+      const lista = document.getElementById('listaContatos');
+      lista.innerHTML = "";
+      contatos.forEach(contato => {
+        const contatoDiv = document.createElement('div');
+        contatoDiv.classList.add('contact');
+        contatoDiv.innerText = `${contato.nome} (${contato.apelido})`;
+        contatoDiv.onclick = () => iniciarChat(contato);
+        lista.appendChild(contatoDiv);
+      });
+
+      document.getElementById('contatos').classList.remove('hidden');
+    }
+
+    // Inicia o chat com o contato
+    function iniciarChat(contato) {
+      currentChat = contato;
+      document.getElementById('chatCom').innerText = `Conversando com: ${contato.nome}`;
+      document.getElementById('contatos').classList.add('hidden');
+      document.getElementById('chat').classList.remove('hidden');
+    }
+
+    // Enviar mensagem
+    function enviarMensagem() {
+      const mensagem = document.getElementById('mensagem').value;
+      if (!mensagem) return;
+
+      const mensagemDiv = document.createElement('div');
+      mensagemDiv.classList.add('message', 'you');
+      mensagemDiv.innerText = mensagem;
+      document.getElementById('chatBox').appendChild(mensagemDiv);
+      document.getElementById('mensagem').value = ""; // Limpa campo de mensagem
+    }
+
+    // Sair do chat
+    function sairChat() {
+      document.getElementById('chat').classList.add('hidden');
+      document.getElementById('perfil').classList.remove('hidden');
+    }
+
+    // Sair do perfil
+    function sair() {
+      sessionStorage.removeItem("usuario");
+      usuario = {};
+      document.getElementById('perfil').classList.add('hidden');
+      document.getElementById('login').classList.remove('hidden');
+    }
+
+    // Verifica se o usuário já está logado
+    window.onload = function () {
+      const usuarioLogado = sessionStorage.getItem("usuario");
+      if (usuarioLogado) {
+        usuario = JSON.parse(usuarioLogado);
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('perfil').classList.remove('hidden');
+        document.getElementById('meuNome').innerText = `Nome: ${usuario.nome} | Apelido: ${usuario.apelido}`;
+        gerarQRCode();
+      }
+    };
   </script>
 </body>
 </html>
