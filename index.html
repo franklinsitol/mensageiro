@@ -3,25 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mensageiro Simples</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Mensageiro Web com JSON</title>
+    <!-- (Manter todos os estilos CSS anteriores) -->
+    <style>
+        /* (Manter todo o CSS anterior) */
+        
+        .github-info {
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
-    <div class="chat-container">
-        <header class="chat-header">
-            <h1>Chat com Amanda</h1>
-            <div class="chat-info">Mensagens autodestroem após 24h</div>
-        </header>
-        
-        <div class="chat-messages" id="chat-messages">
-            <!-- Mensagens serão carregadas aqui -->
+    <!-- (Manter toda a estrutura HTML anterior) -->
+
+    <!-- Adicionar um modal para configurar o repositório -->
+    <div class="modal" id="repo-modal">
+        <div class="modal-content">
+            <div class="modal-title">Configuração do Repositório</div>
+            <div class="github-info">
+                <p>Para que o chat funcione, você precisa:</p>
+                <ol>
+                    <li>Criar um repositório público no GitHub</li>
+                    <li>Criar um arquivo <code>messages.json</code> com conteúdo <code>[]</code></li>
+                    <li>Habilitar GitHub Pages no repositório</li>
+                    <li>Gerar um token de acesso pessoal com permissão <code>repo</code></li>
+                </ol>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Seu usuário GitHub</label>
+                <input type="text" class="form-input" id="github-user" placeholder="seu-usuario">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Nome do repositório</label>
+                <input type="text" class="form-input" id="github-repo" placeholder="nome-do-repositorio">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Token de acesso GitHub</label>
+                <input type="password" class="form-input" id="github-token" placeholder="ghp_seuTokenAqui">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-button secondary-button" id="cancel-repo">Cancelar</button>
+                <button class="modal-button primary-button" id="save-repo">Salvar</button>
+            </div>
         </div>
-        
-        <footer class="chat-footer">
-            <p>Apenas visualização - Mensagens carregadas de arquivos JSON</p>
-        </footer>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        // Configurações do GitHub
+        let githubConfig = {
+            user: '',
+            repo: '',
+            token: '',
+            branch: 'main' // ou 'master' dependendo do seu repo
+        };
+
+        // URL base para o JSON
+        let messagesJsonUrl = '';
+        
+        // (Manter todas as outras variáveis e funções anteriores)
+
+        // Modificar a inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGithubConfig();
+            checkUserRegistration();
+            setupEventListeners();
+        });
+
+        // Carregar configuração do GitHub
+        function loadGithubConfig() {
+            const savedConfig = localStorage.getItem('githubConfig');
+            if (savedConfig) {
+                githubConfig = JSON.parse(savedConfig);
+                messagesJsonUrl = `https://raw.githubusercontent.com/${githubConfig.user}/${githubConfig.repo}/${githubConfig.branch}/messages.json`;
+            } else {
+                document.getElementById('repo-modal').style.display = 'flex';
+            }
+        }
+
+        // Configurar repositório
+        document.getElementById('save-repo').addEventListener('click', function() {
+            githubConfig.user = document.getElementById('github-user').value.trim();
+            githubConfig.repo = document.getElementById('github-repo').value.trim();
+            githubConfig.token = document.getElementById('github-token').value.trim();
+            
+            if (!githubConfig.user || !githubConfig.repo || !githubConfig.token) {
+                alert('Preencha todos os campos!');
+                return;
+            }
+            
+            localStorage.setItem('githubConfig', JSON.stringify(githubConfig));
+            messagesJsonUrl = `https://raw.githubusercontent.com/${githubConfig.user}/${githubConfig.repo}/${githubConfig.branch}/messages.json`;
+            
+            // Testar a conexão
+            testGithubConnection();
+        });
+
+        // Testar conexão com GitHub
+        async function testGithubConnection() {
+            try {
+                const response = await fetch(messagesJsonUrl);
+                if (response.ok) {
+                    document.getElementById('repo-modal').style.display = 'none';
+                    alert('Configuração salva com sucesso!');
+                } else {
+                    throw new Error('Arquivo não encontrado');
+                }
+            } catch (error) {
+                alert('Erro ao acessar o repositório. Verifique os dados e tente novamente.');
+                console.error(error);
+            }
+        }
+
+        // Modificar a função sendMessage para escrever no GitHub
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            
+            if (!text || !selectedContact) return;
+            
+            const message = {
+                conversationId: getConversationId(currentUser.id, selectedContact.id),
+                senderId: currentUser.id,
+                senderName: currentUser.name,
+                text,
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                // 1. Obter mensagens existentes
+                const response = await fetch(messagesJsonUrl);
+                let allMessages = await response.json();
+                
+                // 2. Adicionar nova mensagem
+                allMessages.push(message);
+                
+                // 3. Atualizar arquivo no GitHub
+                await updateGithubFile(allMessages);
+                
+                // 4. Atualizar a exibição
+                loadMessages();
+                input.value = '';
+            } catch (error) {
+                console.error('Erro ao enviar mensagem:', error);
+                alert('Erro ao enviar mensagem. Tente novamente.');
+            }
+        }
+
+        // Função para atualizar o arquivo no GitHub
+        async function updateGithubFile(newContent) {
+            const apiUrl = `https://api.github.com/repos/${githubConfig.user}/${githubConfig.repo}/contents/messages.json`;
+            
+            // 1. Obter SHA do arquivo atual
+            const fileInfo = await fetch(apiUrl, {
+                headers: {
+                    'Authorization': `token ${githubConfig.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            
+            const fileData = await fileInfo.json();
+            const sha = fileData.sha;
+            
+            // 2. Fazer commit da atualização
+            const updateResponse = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${githubConfig.token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                body: JSON.stringify({
+                    message: 'Update messages',
+                    content: btoa(JSON.stringify(newContent, null, 2)),
+                    sha: sha,
+                    branch: githubConfig.branch
+                })
+            });
+            
+            if (!updateResponse.ok) {
+                throw new Error('Falha ao atualizar arquivo');
+            }
+        }
+
+        // (Manter todas as outras funções anteriores)
+    </script>
 </body>
 </html>
