@@ -1,0 +1,320 @@
+// Configurações
+const MESSAGES_JSON_URL = 'messages.json';
+const MESSAGE_LIFETIME = 24 * 60 * 60 * 1000; // 24 horas em milissegundos
+
+// Estado do aplicativo
+let currentUser = null;
+let contacts = [];
+let selectedContact = null;
+let messages = [];
+
+// Elementos da DOM
+const authScreen = document.getElementById('auth-screen');
+const chatScreen = document.getElementById('chat-screen');
+const authButton = document.getElementById('auth-button');
+const usernameInput = document.getElementById('username');
+const pinInput = document.getElementById('pin');
+const currentUsernameSpan = document.getElementById('current-username');
+const contactsList = document.getElementById('contacts-list');
+const messagesContainer = document.getElementById('messages-container');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const addContactButton = document.getElementById('add-contact');
+const qrModal = document.getElementById('qr-modal');
+const qrCodeDiv = document.getElementById('qrcode');
+const closeQrButton = document.getElementById('close-qr');
+const chatWithHeader = document.getElementById('chat-with');
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', initApp);
+
+function initApp() {
+    loadUser();
+    setupEventListeners();
+    if (!currentUser) {
+        showAuthScreen();
+    } else {
+        showChatScreen();
+        loadContacts();
+        startPolling();
+    }
+}
+
+function setupEventListeners() {
+    authButton.addEventListener('click', handleAuth);
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+    addContactButton.addEventListener('click', showQRCode);
+    closeQrButton.addEventListener('click', () => qrModal.classList.add('hidden'));
+}
+
+// Autenticação
+function handleAuth() {
+    const username = usernameInput.value.trim();
+    const pin = pinInput.value.trim();
+    
+    if (!username || !pin || pin.length !== 4 || isNaN(pin)) {
+        alert('Por favor, insira um nome e um PIN válido de 4 dígitos.');
+        return;
+    }
+    
+    saveUser(username, pin);
+    showChatScreen();
+    loadContacts();
+    startPolling();
+}
+
+function saveUser(username, pin) {
+    currentUser = {
+        id: generateUserId(username),
+        name: username,
+        pin: pin
+    };
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    currentUsernameSpan.textContent = username;
+}
+
+function loadUser() {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        currentUsernameSpan.textContent = currentUser.name;
+    }
+}
+
+function generateUserId(username) {
+    return `${username}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Navegação
+function showAuthScreen() {
+    authScreen.classList.remove('hidden');
+    chatScreen.classList.add('hidden');
+}
+
+function showChatScreen() {
+    authScreen.classList.add('hidden');
+    chatScreen.classList.remove('hidden');
+}
+
+// Contatos
+function loadContacts() {
+    const savedContacts = localStorage.getItem('contacts');
+    if (savedContacts) {
+        contacts = JSON.parse(savedContacts);
+        renderContacts();
+    }
+}
+
+function saveContacts() {
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+}
+
+function renderContacts() {
+    contactsList.innerHTML = '';
+    
+    if (contacts.length === 0) {
+        contactsList.innerHTML = '<div class="no-contacts">Nenhum contato adicionado</div>';
+        return;
+    }
+    
+    contacts.forEach(contact => {
+        const contactElement = document.createElement('div');
+        contactElement.className = 'contact';
+        if (selectedContact && contact.id === selectedContact.id) {
+            contactElement.classList.add('active');
+        }
+        
+        contactElement.innerHTML = `
+            <div>${contact.name}</div>
+        `;
+        
+        contactElement.addEventListener('click', () => selectContact(contact));
+        contactsList.appendChild(contactElement);
+    });
+}
+
+function selectContact(contact) {
+    selectedContact = contact;
+    chatWithHeader.textContent = `Conversando com ${contact.name}`;
+    
+    // Atualizar a classe active nos contatos
+    document.querySelectorAll('.contact').forEach(el => {
+        el.classList.remove('active');
+        if (el.textContent.trim() === contact.name) {
+            el.classList.add('active');
+        }
+    });
+    
+    loadMessages();
+}
+
+function showQRCode() {
+    qrModal.classList.remove('hidden');
+    qrCodeDiv.innerHTML = '';
+    
+    const qrData = JSON.stringify({
+        type: 'contact',
+        userId: currentUser.id,
+        userName: currentUser.name
+    });
+    
+    new QRCode(qrCodeDiv, {
+        text: qrData,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+    });
+}
+
+function addContact(userId, userName) {
+    // Verificar se o contato já existe
+    if (contacts.some(c => c.id === userId)) {
+        alert('Este contato já foi adicionado.');
+        return;
+    }
+    
+    // Verificar se não é o próprio usuário
+    if (userId === currentUser.id) {
+        alert('Você não pode adicionar a si mesmo como contato.');
+        return;
+    }
+    
+    const newContact = {
+        id: userId,
+        name: userName
+    };
+    
+    contacts.push(newContact);
+    saveContacts();
+    renderContacts();
+}
+
+// Mensagens
+async function loadMessages() {
+    if (!selectedContact) return;
+    
+    try {
+        const response = await fetch(MESSAGES_JSON_URL);
+        const allMessages = await response.json();
+        
+        // Filtrar mensagens para esta conversa
+        const conversationId = getConversationId(currentUser.id, selectedContact.id);
+        messages = allMessages.filter(msg => 
+            msg.conversationId === conversationId && 
+            !isMessageExpired(msg.timestamp)
+        );
+        
+        renderMessages();
+    } catch (error) {
+        console.error('Erro ao carregar mensagens:', error);
+        messagesContainer.innerHTML = '<div class="error">Erro ao carregar mensagens</div>';
+    }
+}
+
+function renderMessages() {
+    messagesContainer.innerHTML = '';
+    
+    if (messages.length === 0) {
+        messagesContainer.innerHTML = '<div class="no-messages">Nenhuma mensagem nesta conversa</div>';
+        return;
+    }
+    
+    messages.forEach(msg => {
+        const isSent = msg.senderId === currentUser.id;
+        const messageTime = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${isSent ? 'sent' : 'received'}`;
+        
+        messageElement.innerHTML = `
+            <div>${msg.text}</div>
+            <div class="message-info">${messageTime} • ${msg.senderName}</div>
+        `;
+        
+        messagesContainer.appendChild(messageElement);
+    });
+    
+    // Rolagem automática para a última mensagem
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+async function sendMessage() {
+    const text = messageInput.value.trim();
+    if (!text || !selectedContact) return;
+    
+    const newMessage = {
+        conversationId: getConversationId(currentUser.id, selectedContact.id),
+        senderId: currentUser.id,
+        senderName: currentUser.name,
+        text: text,
+        timestamp: new Date().toISOString()
+    };
+    
+    try {
+        // 1. Obter mensagens existentes
+        let allMessages = [];
+        try {
+            const response = await fetch(MESSAGES_JSON_URL);
+            allMessages = await response.json();
+        } catch (e) {
+            console.log('Criando novo arquivo de mensagens...');
+        }
+        
+        // 2. Adicionar nova mensagem
+        allMessages.push(newMessage);
+        
+        // 3. Simular "salvamento" (em produção, você precisaria de um backend)
+        // Aqui estamos apenas adicionando à lista local e renderizando
+        messages.push(newMessage);
+        renderMessages();
+        messageInput.value = '';
+        
+        // 4. Limpar mensagens expiradas periodicamente
+        cleanupExpiredMessages();
+    } catch (error) {
+        console.error('Erro ao enviar mensagem:', error);
+        alert('Erro ao enviar mensagem. Tente novamente.');
+    }
+}
+
+function getConversationId(userId1, userId2) {
+    const sortedIds = [userId1, userId2].sort();
+    return `conv-${sortedIds[0]}-${sortedIds[1]}`;
+}
+
+function isMessageExpired(timestamp) {
+    const messageTime = new Date(timestamp).getTime();
+    const currentTime = new Date().getTime();
+    return (currentTime - messageTime) > MESSAGE_LIFETIME;
+}
+
+function cleanupExpiredMessages() {
+    messages = messages.filter(msg => !isMessageExpired(msg.timestamp));
+}
+
+// Polling para novas mensagens
+function startPolling() {
+    setInterval(() => {
+        if (selectedContact) {
+            loadMessages();
+        }
+    }, 5000); // Verifica a cada 5 segundos
+}
+
+// Simular recebimento de QR Code (para teste)
+function simulateQRScan() {
+    const qrData = {
+        type: 'contact',
+        userId: 'usuario2-abc123',
+        userName: 'Amigo Teste'
+    };
+    addContact(qrData.userId, qrData.userName);
+}
+
+// Para desenvolvimento: descomente para simular adição de contato
+// setTimeout(simulateQRScan, 3000);
