@@ -1,58 +1,102 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat com JSON</title>
-    <link rel="stylesheet" href="styles/main.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="scripts/app.js" defer></script>
+  <meta charset="UTF-8" />
+  <title>Chat Gun.js Avançado</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="chat-icon.png" type="image/png">
+  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="app-container">
-        <!-- Tela de Login/Cadastro -->
-        <div id="auth-screen" class="screen">
-            <div class="auth-box">
-                <h2>Bem-vindo ao Chat</h2>
-                <div id="auth-form">
-                    <input type="text" id="username" placeholder="Seu nome" required>
-                    <input type="password" id="pin" placeholder="PIN (4 dígitos)" maxlength="4" required>
-                    <button id="auth-button">Entrar</button>
-                </div>
-            </div>
-        </div>
+<body class="bg-gradient-to-br from-indigo-100 to-purple-200 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-md bg-white shadow-xl rounded-xl p-6">
+    <h2 class="text-2xl font-bold text-center text-purple-700 mb-4">Chat P2P com Gun.js</h2>
 
-        <!-- Tela Principal do Chat -->
-        <div id="chat-screen" class="screen hidden">
-            <div class="sidebar">
-                <div class="user-header">
-                    <span id="current-username"></span>
-                    <button id="add-contact">+</button>
-                </div>
-                <div id="contacts-list" class="contacts-list"></div>
-            </div>
-            
-            <div class="chat-area">
-                <div class="chat-header">
-                    <h3 id="chat-with"></h3>
-                </div>
-                <div id="messages-container" class="messages-container"></div>
-                <div class="message-input-area">
-                    <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-                    <button id="send-button">Enviar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de QR Code -->
-        <div id="qr-modal" class="modal hidden">
-            <div class="modal-content">
-                <h3>Adicionar Contato</h3>
-                <div id="qrcode"></div>
-                <p>Mostre este QR para seu amigo</p>
-                <button id="close-qr">Fechar</button>
-            </div>
-        </div>
+    <div id="messages" class="h-64 overflow-y-auto border rounded-lg p-3 bg-gray-50 mb-4 space-y-3">
+      <!-- Mensagens aqui -->
     </div>
+
+    <div class="flex gap-2 mb-2">
+      <input id="username" type="text" placeholder="Seu nome"
+        class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400" />
+    </div>
+    
+    <div class="flex gap-2">
+      <input id="message" type="text" placeholder="Digite sua mensagem"
+        class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400" />
+      <button onclick="sendMessage()"
+        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">Enviar</button>
+    </div>
+  </div>
+
+  <audio id="ping" src="https://notificationsounds.com/storage/sounds/file-sounds-1153-pristine.mp3"></audio>
+
+  <script>
+    const gun = Gun();
+    const chat = gun.get('chat');
+    const messagesDiv = document.getElementById('messages');
+    const seenMessages = new Set();
+    const ping = document.getElementById('ping');
+
+    function getAvatar(name) {
+      const seed = name.trim().toLowerCase();
+      return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(seed)}`;
+    }
+
+    chat.map().on(data => {
+      if (data && data.timestamp && !seenMessages.has(data.timestamp)) {
+        seenMessages.add(data.timestamp);
+
+        const div = document.createElement('div');
+        div.className = "flex items-start gap-2 bg-purple-100 px-3 py-2 rounded-md shadow-sm";
+
+        const avatar = document.createElement('img');
+        avatar.src = getAvatar(data.user);
+        avatar.alt = data.user;
+        avatar.className = "w-8 h-8 rounded-full";
+
+        const content = document.createElement('div');
+        const name = document.createElement('div');
+        name.className = "font-bold text-purple-800";
+        name.textContent = data.user;
+
+        const text = document.createElement('div');
+        text.textContent = data.text;
+
+        const time = document.createElement('div');
+        time.className = "text-xs text-gray-500";
+        time.textContent = new Date(data.timestamp).toLocaleTimeString();
+
+        content.appendChild(name);
+        content.appendChild(text);
+        content.appendChild(time);
+
+        div.appendChild(avatar);
+        div.appendChild(content);
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        // Toca som se a aba estiver ativa
+        if (document.visibilityState === "visible") ping.play();
+      }
+    });
+
+    function sendMessage() {
+      const user = document.getElementById('username').value.trim();
+      const text = document.getElementById('message').value.trim();
+      const timestamp = Date.now();
+
+      if (user && text) {
+        chat.set({ user, text, timestamp });
+        document.getElementById('message').value = '';
+      }
+    }
+
+    // PWA instalação
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
 </body>
 </html>
