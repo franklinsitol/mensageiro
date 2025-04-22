@@ -1,0 +1,50 @@
+{
+    "participants": ["Franklin", "Amanda"],
+    "messages": [
+        {
+            "sender": "Franklin",
+            "text": "Oi Amanda, como vai?",
+            "timestamp": "2023-05-15T09:30:00Z"
+        },
+        {
+            "sender": "Amanda",
+            "text": "Oi Franklin! Tudo bem, e você?",
+            "timestamp": "2023-05-15T09:32:00Z"
+        },
+        {
+            "sender": "Franklin",
+            "text": "Estou bem também, obrigado por perguntar. Você já viu o novo projeto que estamos trabalhando?",
+            "timestamp": "2023-05-15T09:35:00Z"
+        },
+        {
+            "sender": "Amanda",
+            "text": "Ainda não, mas estou curiosa. Pode me contar mais sobre ele?",
+            "timestamp": "2023-05-15T09:37:00Z"
+        },
+        {
+            "sender": "Franklin",
+            "text": "Claro! É um aplicativo de mensagens simples que armazena as conversas em arquivos JSON e mostra apenas mensagens das últimas 24 horas.",
+            "timestamp": "2023-05-15T09:40:00Z"
+        },
+        {
+            "sender": "Amanda",
+            "text": "Interessante! Então as mensagens mais antigas são automaticamente removidas?",
+            "timestamp": "2023-05-15T09:42:00Z"
+        },
+        {
+            "sender": "Franklin",
+            "text": "Exatamente! Isso mantém o chat limpo e relevante. As mensagens antigas ainda estão nos arquivos JSON, mas não são exibidas na interface.",
+            "timestamp": "2023-05-15T09:45:00Z"
+        },
+        {
+            "sender": "Amanda",
+            "text": "Muito inteligente. Posso testar?",
+            "timestamp": "2023-05-15T09:47:00Z"
+        },
+        {
+            "sender": "Franklin",
+            "text": "Claro! Está tudo no GitHub. Vou te enviar o link.",
+            "timestamp": "2023-05-15T09:50:00Z"
+        }
+    ]
+}
