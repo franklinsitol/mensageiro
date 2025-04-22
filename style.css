@@ -1,0 +1,125 @@
+:root {
+    --primary-color: #4285f4;
+    --secondary-color: #34a853;
+    --background-color: #f5f5f5;
+    --message-bg: #ffffff;
+    --other-message-bg: #e0e0e0;
+    --text-color: #333333;
+    --timestamp-color: #666666;
+    --name-color: #555555;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.chat-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+}
+
+.chat-header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 15px 20px;
+    text-align: center;
+}
+
+.chat-header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.chat-info {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: var(--background-color);
+}
+
+.message {
+    margin-bottom: 15px;
+    max-width: 70%;
+    padding: 10px 15px;
+    border-radius: 18px;
+    position: relative;
+    word-wrap: break-word;
+}
+
+.message.sent {
+    background-color: var(--primary-color);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 5px;
+}
+
+.message.received {
+    background-color: var(--other-message-bg);
+    margin-right: auto;
+    border-bottom-left-radius: 5px;
+}
+
+.message .sender {
+    font-weight: bold;
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+    color: var(--name-color);
+}
+
+.message.sent .sender {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.message .timestamp {
+    font-size: 0.7rem;
+    text-align: right;
+    margin-top: 5px;
+    color: var(--timestamp-color);
+}
+
+.message.sent .timestamp {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.chat-footer {
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--timestamp-color);
+    background-color: white;
+    border-top: 1px solid #eee;
+}
+
+/* Responsividade */
+@media (max-width: 600px) {
+    .chat-container {
+        height: 100vh;
+        border-radius: 0;
+    }
+    
+    .message {
+        max-width: 85%;
+    }
+}
