@@ -1,491 +1,354 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <!-- ... (mantenha o head anterior) ... -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FF9BB3">
+    <meta name="description" content="BunnyChat - Mensagens Fofinhas e Seguras">
+    <title>BunnyChat - Mensagens Fofinhas</title>
+    
+    <!-- Manifest PWA -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Ícones para PWA -->
+    <link rel="icon" href="icons/favicon.ico">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- CSS e Fontes com pré-carregamento -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/gun/gun.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/gun/sea.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" as="script">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Short+Stack&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        /* ... (mantenha os estilos anteriores) ... */
-
-        /* Novos estilos para chamadas */
-        .call-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-        }
-
-        .video-container {
-            width: 100%;
-            max-width: 800px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        .video-box {
-            width: 100%;
-            max-width: 400px;
-            background-color: black;
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .video-box video {
-            width: 100%;
-            height: auto;
-        }
-
-        .video-label {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background-color: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-
-        .call-controls {
-            margin-top: 20px;
-            display: flex;
-            gap: 15px;
-        }
-
-        .call-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            cursor: pointer;
-            border: none;
-            color: white;
-        }
-
-        .accept-call {
-            background-color: #28a745;
-        }
-
-        .reject-call {
-            background-color: #dc3545;
-        }
-
-        .end-call {
-            background-color: #dc3545;
-        }
-
-        .toggle-audio {
-            background-color: #6c757d;
-        }
-
-        .toggle-video {
-            background-color: #6c757d;
-        }
-
-        .incoming-call {
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); }
-            80% { transform: scale(1.2); }
-            100% { opacity: 0; }
-        }
-
-        .call-avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background-color: var(--secondary);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 48px;
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .call-avatar::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-            animation: pulse-ring 2s infinite;
-        }
-
-        .caller-info {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .caller-name {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-
-        .call-status {
-            font-size: 16px;
-            opacity: 0.8;
-        }
+        /* ... (mantenha todos os estilos anteriores) ... */
     </style>
 </head>
 <body>
-    <!-- ... (mantenha o container e telas anteriores) ... -->
-
-    <!-- Adicione isto no final do body, antes do script -->
-    <div id="callContainer" class="call-container" style="display: none;">
-        <div id="incomingCallUI" style="display: none;">
-            <div class="call-avatar" id="callerAvatar"></div>
-            <div class="caller-info">
-                <div class="caller-name" id="callerName"></div>
-                <div class="call-status" id="callStatus">Chamada recebida</div>
-            </div>
-            <div class="call-controls">
-                <button class="call-btn accept-call" id="acceptCallBtn"><i class="fas fa-phone"></i></button>
-                <button class="call-btn reject-call" id="rejectCallBtn"><i class="fas fa-phone-slash"></i></button>
-            </div>
-        </div>
-
-        <div id="ongoingCallUI" style="display: none;">
-            <div class="video-container">
-                <div class="video-box">
-                    <video id="remoteVideo" autoplay playsinline></video>
-                    <div class="video-label" id="remoteName"></div>
-                </div>
-                <div class="video-box">
-                    <video id="localVideo" autoplay playsinline muted></video>
-                    <div class="video-label">Você</div>
-                </div>
-            </div>
-            <div class="call-controls">
-                <button class="call-btn toggle-audio" id="toggleAudioBtn"><i class="fas fa-microphone"></i></button>
-                <button class="call-btn toggle-video" id="toggleVideoBtn"><i class="fas fa-video"></i></button>
-                <button class="call-btn end-call" id="endCallBtn"><i class="fas fa-phone-slash"></i></button>
-            </div>
-        </div>
-    </div>
+    <!-- ... (mantenha toda a estrutura HTML anterior) ... -->
 
     <script>
-        // Configuração do Gun.js
+        // Configuração otimizada do Gun.js
         const gun = Gun({
             peers: ['https://gun-manhattan.herokuapp.com/gun'],
             localStorage: false,
             radisk: false
         });
 
-        // Estado da aplicação
+        // Estado simplificado da aplicação
         const state = {
-            // ... (mantenha o estado anterior) ...
-            
-            // Novos estados para WebRTC
-            rtcConnection: null,
-            localStream: null,
-            remoteStream: null,
-            peerConnection: null,
-            callData: null,
-            isCaller: false,
-            isAudioMuted: false,
-            isVideoOff: false,
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' }
-            ]
+            currentUser: null,
+            currentContact: null,
+            processedMessages: new Set(),
+            lastScannedQR: null
         };
 
-        // ... (mantenha as funções auxiliares anteriores) ...
+        // Cache de elementos DOM
+        const elements = {
+            displays: {
+                chatMessages: document.querySelector('.chat-messages'),
+                qrCode: document.querySelector('.qr-code canvas'),
+                userId: document.querySelector('#userId')
+            },
+            inputs: {
+                message: document.querySelector('#messageInput')
+            },
+            video: document.querySelector('#qrScanner video'),
+            scanOverlay: document.querySelector('.scan-overlay')
+        };
 
-        // Funções WebRTC
-        async function setupWebRTC() {
-            try {
-                // Obter stream local (áudio e vídeo)
-                state.localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: true,
-                    video: true
-                });
-                
-                // Configurar o vídeo local
-                const localVideo = document.getElementById('localVideo');
-                localVideo.srcObject = state.localStream;
-                
-                return true;
-            } catch (error) {
-                console.error('Erro ao acessar mídia:', error);
-                showNotification('Não foi possível acessar câmera/microfone');
-                return false;
-            }
+        // Função utilitária para mostrar notificações
+        function showNotification(message, type = 'info') {
+            console.log(`[${type}] ${message}`);
+            // Implementação da notificação UI
         }
 
-        function createPeerConnection() {
-            state.peerConnection = new RTCPeerConnection({
-                iceServers: state.iceServers
-            });
-
-            // Adicionar stream local à conexão
-            state.localStream.getTracks().forEach(track => {
-                state.peerConnection.addTrack(track, state.localStream);
-            });
-
-            // Quando receber um stream remoto
-            state.peerConnection.ontrack = (event) => {
-                const remoteVideo = document.getElementById('remoteVideo');
-                if (!remoteVideo.srcObject) {
-                    remoteVideo.srcObject = event.streams[0];
-                    state.remoteStream = event.streams[0];
-                }
-            };
-
-            // Manipular ICE candidates
-            state.peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    // Enviar o candidato ICE para o outro peer
-                    gun.get('calls').get(state.callData.callId).get('iceCandidates').set({
-                        sender: state.currentUser.id,
-                        candidate: event.candidate
-                    });
-                }
-            };
-
-            state.peerConnection.oniceconnectionstatechange = () => {
-                if (state.peerConnection.iceConnectionState === 'disconnected' ||
-                    state.peerConnection.iceConnectionState === 'failed') {
-                    endCall();
-                }
-            };
-        }
-
-        async function startCall(contactId, isVideoCall) {
-            if (!await setupWebRTC()) return;
+        // Função otimizada para enviar mensagens
+        async function sendMessage(contactId, messageText) {
+            if (!state.currentUser || !messageText.trim()) return;
             
-            const callId = Gun.text.random(16);
-            state.isCaller = true;
-            state.callData = {
-                callId,
-                caller: state.currentUser.id,
-                callee: contactId,
-                isVideoCall,
-                timestamp: Date.now()
-            };
-
-            // Mostrar UI de chamada
-            document.getElementById('callContainer').style.display = 'flex';
-            document.getElementById('ongoingCallUI').style.display = 'block';
-            document.getElementById('remoteName').textContent = state.contacts[contactId].name;
-
-            // Criar conexão peer
-            createPeerConnection();
-
-            // Criar oferta
-            const offer = await state.peerConnection.createOffer();
-            await state.peerConnection.setLocalDescription(offer);
-
-            // Enviar oferta via GunDB
-            gun.get('calls').get(callId).put({
-                ...state.callData,
-                offer: offer
-            });
-
-            // Ouvir por respostas
-            gun.get('calls').get(callId).get('answer').on(async (data) => {
-                if (data && data.sender === contactId) {
-                    await state.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-                }
-            });
-
-            // Ouvir por ICE candidates
-            gun.get('calls').get(callId).get('iceCandidates').on(async (data) => {
-                if (data && data.sender === contactId && data.candidate) {
-                    try {
-                        await state.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                    } catch (e) {
-                        console.error('Erro ao adicionar ICE candidate:', e);
-                    }
-                }
-            });
-        }
-
-        async function handleIncomingCall(callId, callData) {
-            state.callData = callData;
-            state.isCaller = false;
-
-            // Mostrar UI de chamada recebida
-            document.getElementById('callContainer').style.display = 'flex';
-            document.getElementById('incomingCallUI').style.display = 'block';
-            document.getElementById('callerName').textContent = state.contacts[callData.caller].name;
-            document.getElementById('callerAvatar').textContent = generateAvatarIcon(state.contacts[callData.caller].name);
-
-            // Configurar listeners para os botões
-            elements.buttons.acceptCall.onclick = async () => {
-                if (!await setupWebRTC()) return;
-                
-                document.getElementById('incomingCallUI').style.display = 'none';
-                document.getElementById('ongoingCallUI').style.display = 'block';
-                document.getElementById('remoteName').textContent = state.contacts[callData.caller].name;
-
-                createPeerConnection();
-                await state.peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
-
-                // Criar resposta
-                const answer = await state.peerConnection.createAnswer();
-                await state.peerConnection.setLocalDescription(answer);
-
-                // Enviar resposta via GunDB
-                gun.get('calls').get(callId).get('answer').put({
+            try {
+                const messageId = Gun.text.random(16);
+                const message = {
+                    id: messageId,
                     sender: state.currentUser.id,
-                    answer: answer
-                });
-
-                // Ouvir por ICE candidates
-                gun.get('calls').get(callId).get('iceCandidates').on(async (data) => {
-                    if (data && data.sender === callData.caller && data.candidate) {
-                        try {
-                            await state.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                        } catch (e) {
-                            console.error('Erro ao adicionar ICE candidate:', e);
-                        }
-                    }
-                });
-            };
-
-            elements.buttons.rejectCall.onclick = () => {
-                endCall();
-                gun.get('calls').get(callId).put(null); // Limpar dados da chamada
-            };
-        }
-
-        function endCall() {
-            // Encerrar streams
-            if (state.localStream) {
-                state.localStream.getTracks().forEach(track => track.stop());
-                state.localStream = null;
-            }
-
-            if (state.remoteStream) {
-                state.remoteStream.getTracks().forEach(track => track.stop());
-                state.remoteStream = null;
-            }
-
-            // Encerrar conexão peer
-            if (state.peerConnection) {
-                state.peerConnection.close();
-                state.peerConnection = null;
-            }
-
-            // Limpar UI
-            document.getElementById('callContainer').style.display = 'none';
-            document.getElementById('incomingCallUI').style.display = 'none';
-            document.getElementById('ongoingCallUI').style.display = 'none';
-
-            // Limpar dados da chamada
-            if (state.callData) {
-                gun.get('calls').get(state.callData.callId).put(null);
-                state.callData = null;
+                    receiver: contactId,
+                    text: messageText.trim(),
+                    timestamp: Date.now(),
+                    read: false
+                };
+                
+                if (state.processedMessages.has(messageId)) return;
+                state.processedMessages.add(messageId);
+                
+                // Envio otimizado usando Promise.all
+                await Promise.all([
+                    gun.get('users').get(state.currentUser.id).get('messages').get(messageId).put(message),
+                    gun.get('users').get(contactId).get('messages').get(messageId).put(message)
+                ]);
+                
+                elements.inputs.message.value = '';
+            } catch (error) {
+                showNotification('Erro ao enviar mensagem', 'error');
+                console.error('Erro no sendMessage:', error);
             }
         }
 
-        function toggleAudio() {
-            if (state.localStream) {
-                state.isAudioMuted = !state.isAudioMuted;
-                state.localStream.getAudioTracks().forEach(track => {
-                    track.enabled = !state.isAudioMuted;
-                });
-                const icon = document.getElementById('toggleAudioBtn').querySelector('i');
-                icon.className = state.isAudioMuted ? 'fas fa-microphone-slash' : 'fas fa-microphone';
-            }
-        }
-
-        function toggleVideo() {
-            if (state.localStream) {
-                state.isVideoOff = !state.isVideoOff;
-                state.localStream.getVideoTracks().forEach(track => {
-                    track.enabled = !state.isVideoOff;
-                });
-                const icon = document.getElementById('toggleVideoBtn').querySelector('i');
-                icon.className = state.isVideoOff ? 'fas fa-video-slash' : 'fas fa-video';
-            }
-        }
-
-        // Atualize a função setupEventListeners para incluir os novos eventos:
-        function setupEventListeners() {
-            // ... (mantenha os listeners anteriores) ...
-
-            // Novos listeners para chamadas
-            elements.buttons.endCall.addEventListener('click', endCall);
-            elements.buttons.toggleAudio.addEventListener('click', toggleAudio);
-            elements.buttons.toggleVideo.addEventListener('click', toggleVideo);
-
-            // Ouvir por chamadas recebidas
-            gun.get('users').get(state.currentUser?.id).get('calls').map().on(async (data, callId) => {
-                if (data && data.callee === state.currentUser?.id && !state.callData) {
-                    // Verificar se a chamada é recente (últimos 30 segundos)
-                    if (Date.now() - data.timestamp < 30000) {
-                        handleIncomingCall(callId, data);
-                    }
+        // Função otimizada para carregar mensagens
+        function loadChatMessages(contactId) {
+            if (!state.currentUser || !contactId) return;
+            
+            elements.displays.chatMessages.innerHTML = '';
+            
+            const messages = gun.get('users').get(state.currentUser.id).get('messages');
+            const messageElements = [];
+            let hasMessages = false;
+            
+            messages.map().once((message, id) => {
+                if (!message || state.processedMessages.has(message.id)) return;
+                
+                state.processedMessages.add(message.id);
+                
+                const isRelevant = (message.sender === contactId && message.receiver === state.currentUser.id) || 
+                                  (message.sender === state.currentUser.id && message.receiver === contactId);
+                if (!isRelevant) return;
+                
+                hasMessages = true;
+                messageElements.push(createMessageElement(message));
+                
+                if (!isSender && !message.read) {
+                    markMessageAsRead(id, message);
                 }
             });
+            
+            if (hasMessages) {
+                elements.displays.chatMessages.append(...messageElements);
+                elements.displays.chatMessages.scrollTop = elements.displays.chatMessages.scrollHeight;
+            } else {
+                showEmptyState();
+            }
+        }
 
-            // Adicionar botões de chamada nos contatos
-            document.addEventListener('click', (e) => {
-                if (e.target.closest('.call-contact-btn')) {
-                    const contactId = e.target.closest('.call-contact-btn').dataset.contactId;
-                    const isVideoCall = e.target.closest('.call-contact-btn').classList.contains('video-call-btn');
-                    startCall(contactId, isVideoCall);
-                }
+        function createMessageElement(message) {
+            const isSender = message.sender === state.currentUser.id;
+            const senderName = isSender ? 'Você' : state.currentContact.name;
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message-item';
+            messageElement.style.alignItems = isSender ? 'flex-end' : 'flex-start';
+            messageElement.style.backgroundColor = isSender ? 'var(--secondary)' : 'white';
+            
+            messageElement.innerHTML = `
+                <div class="message-header">
+                    ${!isSender ? `<div class="avatar message-avatar">${generateAvatarIcon(state.currentContact.name)}</div>` : ''}
+                    <div class="message-sender">${senderName}</div>
+                    <div class="message-time">${formatTime(message.timestamp)}</div>
+                </div>
+                <div class="message-content">
+                    ${escapeHtml(message.text)}
+                </div>
+            `;
+            
+            return messageElement;
+        }
+
+        function markMessageAsRead(id, message) {
+            gun.get('users').get(state.currentUser.id).get('messages').get(id).put({
+                ...message,
+                read: true
             });
         }
 
-        // Atualize a função loadContacts para incluir botões de chamada:
-        function loadContacts() {
+        function showEmptyState() {
+            elements.displays.chatMessages.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-comment-dots"></i>
+                    <p>Nenhuma mensagem ainda</p>
+                    <p>Envie uma mensagem para começar a conversa!</p>
+                </div>
+            `;
+        }
+
+        // Função otimizada para gerar QR Code
+        async function generateQrCode() {
             if (!state.currentUser) return;
             
-            elements.displays.contactsList.innerHTML = '';
-            
-            gun.get('users').get(state.currentUser.id).get('contacts').map().once((contact, contactId) => {
-                if (!contact) return;
+            try {
+                const qrToken = Math.random().toString(36).slice(2, 12);
+                const qrData = JSON.stringify({
+                    app: "BunnyChat",
+                    version: 1,
+                    userId: state.currentUser.id,
+                    token: qrToken,
+                    timestamp: Date.now()
+                });
                 
-                state.contacts[contactId] = contact;
+                await gun.get('users').get(state.currentUser.id).put({
+                    ...state.currentUser,
+                    qrToken
+                });
                 
-                const contactElement = document.createElement('div');
-                contactElement.className = 'contact-item';
-                contactElement.innerHTML = `
-                    <div class="avatar">${generateAvatarIcon(contact.name)}</div>
-                    <div class="contact-info">
-                        <div class="contact-name">${contact.name}</div>
-                        <div class="contact-nickname">@${contact.nickname}</div>
-                    </div>
-                    <div class="contact-actions">
-                        <button class="call-contact-btn audio-call-btn" data-contact-id="${contactId}" title="Chamada de voz">
-                            <i class="fas fa-phone"></i>
-                        </button>
-                        <button class="call-contact-btn video-call-btn" data-contact-id="${contactId}" title="Chamada de vídeo">
-                            <i class="fas fa-video"></i>
-                        </button>
-                        <button class="edit-contact-btn" data-contact-id="${contactId}"><i class="fas fa-edit"></i></button>
-                        <button class="message-contact-btn" data-contact-id="${contactId}"><i class="fas fa-comment"></i></button>
-                    </div>
-                `;
+                QRCode.toCanvas(elements.displays.qrCode, qrData, {
+                    width: 200,
+                    margin: 2,
+                    color: {
+                        dark: '#5A2A3E',
+                        light: '#FFF2F5'
+                    }
+                });
                 
-                elements.displays.contactsList.appendChild(contactElement);
-                
-                // ... (mantenha os outros listeners) ...
-            });
+                elements.displays.userId.value = state.currentUser.id;
+            } catch (error) {
+                showNotification('Erro ao gerar QR Code', 'error');
+                console.error('Erro no generateQrCode:', error);
+            }
         }
 
-        // ... (mantenha o restante do código) ...
+        // Scanner de QR Code otimizado
+        async function startQrScanner() {
+            state.lastScannedQR = null;
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                elements.video.srcObject = stream;
+                elements.video.setAttribute('playsinline', true);
+                await elements.video.play();
+                
+                elements.video.onplaying = () => elements.scanOverlay.style.display = 'none';
+                scanFrame();
+            } catch (error) {
+                handleCameraError(error);
+            }
+        }
+
+        function scanFrame() {
+            if (!elements.video.srcObject) return;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            function processFrame() {
+                if (state.currentScreen !== 'scan') return;
+                
+                try {
+                    if (elements.video.readyState === elements.video.HAVE_ENOUGH_DATA) {
+                        canvas.width = elements.video.videoWidth;
+                        canvas.height = elements.video.videoHeight;
+                        ctx.drawImage(elements.video, 0, 0, canvas.width, canvas.height);
+                        
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: 'dontInvert'
+                        });
+                        
+                        if (code) processQRCode(code.data);
+                    }
+                    requestAnimationFrame(processFrame);
+                } catch (error) {
+                    console.error('Erro no scanner:', error);
+                    stopQrScanner();
+                    showNotification('Erro no scanner de QR Code', 'error');
+                }
+            }
+            
+            processFrame();
+        }
+
+        function processQRCode(data) {
+            try {
+                const qrData = JSON.parse(data);
+                
+                if (!isValidQR(qrData)) return;
+                if (qrData.userId === state.currentUser.id) {
+                    showNotification('Você não pode adicionar a si mesmo!');
+                    return;
+                }
+                
+                const qrKey = `${qrData.userId}-${qrData.token}`;
+                if (state.lastScannedQR === qrKey) return;
+                state.lastScannedQR = qrKey;
+                
+                if (isQRExpired(qrData.timestamp)) {
+                    showNotification('QR Code expirado');
+                    return;
+                }
+                
+                verifyAndAddContact(qrData);
+            } catch (error) {
+                console.error('Erro ao processar QR Code:', error);
+            }
+        }
+
+        function isValidQR(qrData) {
+            return qrData.app === "BunnyChat" && qrData.userId && qrData.token;
+        }
+
+        function isQRExpired(timestamp) {
+            return timestamp && (Date.now() - timestamp > 300000);
+        }
+
+        async function verifyAndAddContact(qrData) {
+            const user = await new Promise(resolve => {
+                gun.get('users').get(qrData.userId).once(resolve);
+            });
+            
+            if (user && user.qrToken === qrData.token) {
+                stopQrScanner();
+                addContact(qrData.userId);
+            } else {
+                showNotification('QR Code inválido');
+            }
+        }
+
+        function handleCameraError(error) {
+            console.error('Erro ao acessar a câmera:', error);
+            elements.scanOverlay.innerHTML = `
+                <div>
+                    <i class="fas fa-camera-slash"></i>
+                    <p>Não foi possível acessar a câmera</p>
+                    <p>Verifique as permissões do navegador</p>
+                    <button id="tryAgainBtn" class="btn btn-small">Tentar novamente</button>
+                </div>
+            `;
+            
+            document.getElementById('tryAgainBtn').onclick = startQrScanner;
+        }
+
+        function stopQrScanner() {
+            if (elements.video.srcObject) {
+                elements.video.srcObject.getTracks().forEach(track => track.stop());
+                elements.video.srcObject = null;
+            }
+            elements.scanOverlay.style.display = 'flex';
+            state.lastScannedQR = null;
+        }
+
+        // Utilitários
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function generateAvatarIcon(name) {
+            return name ? name.charAt(0).toUpperCase() : '?';
+        }
+
+        /* ... (outras funções auxiliares conforme necessário) ... */
     </script>
 </body>
 </html>
