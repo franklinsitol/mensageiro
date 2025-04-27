@@ -121,18 +121,30 @@ function showSection(sectionName) {
     elements.sections[sectionName].classList.remove('hidden');
 }
 
-// Tela de novo usuário
+// Substitua a função showNewUserScreen por esta versão corrigida
 function showNewUserScreen() {
     const userName = prompt("Digite seu nome:");
-    if (userName) {
+    if (userName && userName.trim() !== "") {
         const userId = Gun.text.random(16);
-        const user = { id: userId, name: userName };
+        const user = { 
+            id: userId, 
+            name: userName,
+            createdAt: Date.now()
+        };
         
-        gun.get('users').get(userId).put(user, ack => {
-            if (!ack.err) {
-                state.currentUser = user;
-                localStorage.setItem('bunnyChatUser', JSON.stringify(user));
+        // Salva localmente
+        state.currentUser = user;
+        localStorage.setItem('bunnyChatUser', JSON.stringify(user));
+        
+        // Salva no GunDB (usando callback para confirmar)
+        gun.get('users').get(userId).put(user, (ack) => {
+            if (ack.err) {
+                console.error("Erro ao salvar:", ack.err);
+                alert("Erro ao criar usuário");
+            } else {
                 showScreen('main');
+                loadContacts();
+                alert("Usuário criado com sucesso! Seu ID: " + userId);
             }
         });
     }
