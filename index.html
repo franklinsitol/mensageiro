@@ -5,29 +5,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BunnyChat</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/mobile.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <header>
-        <h1>BunnyChat</h1>
+        <h1><i class="fas fa-paw"></i> BunnyChat</h1>
     </header>
     
     <div class="container">
-        <!-- Telas serão inseridas via JavaScript -->
+        <!-- Tela de autenticação -->
+        <div id="authScreen" class="screen active">
+            <div class="auth-options">
+                <button id="newUserBtn" class="btn big-btn">
+                    <i class="fas fa-user-plus"></i> Novo Usuário
+                </button>
+                <button id="existingUserBtn" class="btn big-btn">
+                    <i class="fas fa-user-check"></i> Usuário Existente
+                </button>
+            </div>
+        </div>
+
+        <!-- Tela principal -->
+        <div id="mainScreen" class="screen">
+            <div id="contactsSection" class="section hidden">
+                <h2><i class="fas fa-users"></i> Contatos</h2>
+                <div id="contactsList" class="contacts-list"></div>
+            </div>
+
+            <div id="qrSection" class="section hidden">
+                <h2><i class="fas fa-qrcode"></i> Meu QR Code</h2>
+                <div class="user-info">
+                    <p><strong>Nome:</strong> <span id="userNameDisplay"></span></p>
+                    <p><strong>ID:</strong> <span id="userIdDisplay"></span></p>
+                </div>
+                <canvas id="qrCodeCanvas"></canvas>
+                <button id="copyIdBtn" class="btn">
+                    <i class="fas fa-copy"></i> Copiar ID
+                </button>
+            </div>
+
+            <div id="scanSection" class="section hidden">
+                <h2><i class="fas fa-camera"></i> Escanear QR</h2>
+                <div class="scanner-container">
+                    <video id="qrVideo"></video>
+                    <div class="scan-overlay">
+                        <i class="fas fa-qrcode"></i>
+                        <p>Posicione o QR Code na área</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tela de chat -->
+        <div id="chatScreen" class="screen">
+            <div class="chat-header">
+                <button id="backToMainBtn" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div class="chat-contact">
+                    <div class="avatar" id="chatAvatar"></div>
+                    <span id="chatContactName"></span>
+                </div>
+                <button id="callBtn" class="call-btn">
+                    <i class="fas fa-phone"></i>
+                </button>
+            </div>
+            
+            <div id="chatMessages" class="chat-messages"></div>
+            
+            <div class="message-input">
+                <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+                <button id="sendMessageBtn" class="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Botões flutuantes -->
     <div class="float-buttons">
-        <button id="btnContacts"><i class="fas fa-users"></i></button>
-        <button id="btnQRCode"><i class="fas fa-qrcode"></i></button>
-        <button id="btnScan"><i class="fas fa-camera"></i></button>
+        <button id="floatContactsBtn" class="float-btn" title="Contatos">
+            <i class="fas fa-users"></i>
+        </button>
+        <button id="floatQRBtn" class="float-btn" title="Meu QR Code">
+            <i class="fas fa-qrcode"></i>
+        </button>
+        <button id="floatScanBtn" class="float-btn" title="Escanear QR">
+            <i class="fas fa-camera"></i>
+        </button>
     </div>
 
-    <!-- Chamada de vídeo -->
-    <div id="callContainer" class="call-container hidden">
-        <!-- Conteúdo dinâmico -->
+    <!-- Tela de chamada -->
+    <div id="callScreen" class="call-screen hidden">
+        <div class="call-info">
+            <h2 id="callContactName"></h2>
+            <p id="callStatus">Conectando...</p>
+        </div>
+        <video id="remoteVideo" autoplay playsinline></video>
+        <video id="localVideo" autoplay playsinline muted></video>
+        <div class="call-controls">
+            <button id="endCallBtn" class="call-btn end-call">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+            <button id="toggleMuteBtn" class="call-btn">
+                <i class="fas fa-microphone"></i>
+            </button>
+        </div>
     </div>
 
     <!-- Scripts -->
@@ -35,43 +119,6 @@
     <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    
-    <script src="js/utils.js"></script>
-    <script src="js/gun.js"></script>
-    <script src="js/qrcode.js"></script>
-    <script src="js/webrtc.js"></script>
-    <script src="js/app.js" type="module"></script>
-    <!-- Adicione isso dentro do container -->
-<div class="container">
-    <!-- Tela de autenticação -->
-    <div id="authSection" class="main-section">
-        <!-- Conteúdo da autenticação -->
-    </div>
-
-    <!-- Tela principal -->
-    <div id="mainSection" class="main-section hidden">
-        <!-- Seções -->
-        <div id="contactsSection" class="main-section hidden">
-            <h2>Seus Contatos</h2>
-            <div id="contactsList"></div>
-        </div>
-
-        <div id="qrSection" class="main-section hidden">
-            <h2>Meu QR Code</h2>
-            <canvas id="qrCanvas"></canvas>
-            <button id="copyBtn">Copiar ID</button>
-        </div>
-
-        <div id="scanSection" class="main-section hidden">
-            <h2>Escanear QR Code</h2>
-            <video id="qrVideo" playsinline></video>
-        </div>
-    </div>
-
-    <!-- Tela de chat -->
-    <div id="chatSection" class="main-section hidden">
-        <!-- Interface do chat -->
-    </div>
-</div>
+    <script src="js/app.js"></script>
 </body>
 </html>
