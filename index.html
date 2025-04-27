@@ -178,12 +178,29 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
-        .user-id {
+        .user-info {
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .user-info-item {
+            margin-bottom: 10px;
+        }
+        
+        .user-info-label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .user-id-container {
             display: flex;
             margin: 15px 0;
         }
         
-        .user-id input {
+        .user-id-container input {
             flex: 1;
             padding: 10px 15px;
             border: 2px solid var(--primary);
@@ -191,13 +208,31 @@
             outline: none;
         }
         
-        .user-id button {
+        .user-id-container button {
             padding: 10px 15px;
             background-color: var(--primary);
             color: white;
             border: none;
-            border-radius: 0 20px 20px 0;
             cursor: pointer;
+        }
+        
+        .share-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .share-btn {
+            padding: 8px 15px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
         .qr-scanner {
@@ -209,8 +244,10 @@
         
         .qr-scanner video {
             width: 100%;
+            max-height: 400px;
             border-radius: 10px;
             background-color: black;
+            object-fit: contain;
         }
         
         .scan-overlay {
@@ -249,6 +286,47 @@
             display: flex;
             justify-content: center;
             margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .contact-item:hover {
+            transform: translateY(-2px);
+        }
+        
+        .contact-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .contact-action-btn {
+            background: none;
+            border: none;
+            color: var(--dark);
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 600px) {
+            .btn-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                margin: 5px 0;
+            }
         }
     </style>
 </head>
@@ -309,14 +387,35 @@
                 <div id="contactsList" style="margin-top: 10px;"></div>
             </div>
             
-            <div id="qrSection" style="margin-top: 20px; display: none; text-align: center;">
-                <h3>Meu QR Code</h3>
+            <div id="qrSection" style="margin-top: 20px; display: none;">
+                <div class="user-info">
+                    <div class="user-info-item">
+                        <span class="user-info-label">Seu Nome:</span>
+                        <span id="userNameDisplay"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="user-info-label">Seu ID:</span>
+                        <span id="userIdDisplayText"></span>
+                    </div>
+                </div>
+                
+                <h3 style="text-align: center;">Meu QR Code</h3>
                 <div class="qr-code">
                     <canvas id="qrCodeCanvas"></canvas>
                 </div>
-                <div class="user-id">
-                    <input type="text" id="userIdDisplay" readonly>
-                    <button id="copyUserIdBtn"><i class="fas fa-copy"></i></button>
+                
+                <div class="user-id-container">
+                    <input type="text" id="userIdInput" readonly>
+                    <button id="copyUserIdBtn" title="Copiar ID"><i class="fas fa-copy"></i></button>
+                </div>
+                
+                <div class="share-buttons">
+                    <button id="shareQRBtn" class="share-btn">
+                        <i class="fas fa-share-alt"></i> Compartilhar
+                    </button>
+                    <button id="downloadQRBtn" class="share-btn">
+                        <i class="fas fa-download"></i> Baixar QR
+                    </button>
                 </div>
             </div>
             
@@ -325,6 +424,11 @@
                 <div class="scan-overlay">
                     <i class="fas fa-qrcode" style="font-size: 2rem; margin-bottom: 10px;"></i>
                     <p>Posicione o QR Code na área de leitura</p>
+                    <div style="margin-top: 20px;">
+                        <button id="switchCameraBtn" class="btn btn-small" style="display: none;">
+                            <i class="fas fa-camera-retro"></i> Trocar Câmera
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -374,7 +478,9 @@
             messages: {},
             qrScanner: null,
             currentScreen: 'userSelect',
-            processedMessages: new Set()
+            processedMessages: new Set(),
+            currentCamera: 'environment', // Padrão para câmera traseira
+            contactsCache: {} // Cache local de contatos
         };
 
         // Elementos DOM
@@ -398,13 +504,16 @@
                 scanQR: document.getElementById('scanQRBtn'),
                 backToMain: document.getElementById('backToMainBtn'),
                 sendMessage: document.getElementById('sendMessageBtn'),
-                copyUserId: document.getElementById('copyUserIdBtn')
+                copyUserId: document.getElementById('copyUserIdBtn'),
+                shareQR: document.getElementById('shareQRBtn'),
+                downloadQR: document.getElementById('downloadQRBtn'),
+                switchCamera: document.getElementById('switchCameraBtn')
             },
             inputs: {
                 newUserName: document.getElementById('newUserName'),
                 existingUserId: document.getElementById('existingUserId'),
                 message: document.getElementById('messageInput'),
-                userIdDisplay: document.getElementById('userIdDisplay')
+                userIdInput: document.getElementById('userIdInput')
             },
             displays: {
                 contactsList: document.getElementById('contactsList'),
@@ -413,7 +522,9 @@
                 chatAvatar: document.getElementById('chatAvatar'),
                 chatContactName: document.getElementById('chatContactName'),
                 qrVideo: document.getElementById('qrVideo'),
-                scanOverlay: document.querySelector('.scan-overlay')
+                scanOverlay: document.querySelector('.scan-overlay'),
+                userNameDisplay: document.getElementById('userNameDisplay'),
+                userIdDisplayText: document.getElementById('userIdDisplayText')
             },
             sections: {
                 contacts: document.getElementById('contactsSection'),
@@ -426,6 +537,16 @@
         function init() {
             setupEventListeners();
             checkForExistingUser();
+            
+            // Verifica se é um dispositivo móvel
+            if (!isMobileDevice()) {
+                elements.buttons.switchCamera.style.display = 'block';
+            }
+        }
+
+        // Verifica se é um dispositivo móvel
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         }
 
         // Verifica se há usuário salvo localmente
@@ -435,8 +556,16 @@
                 try {
                     state.currentUser = JSON.parse(savedUser);
                     showScreen('main');
+                    loadContacts();
+                    
+                    // Carrega contatos do cache local
+                    const cachedContacts = localStorage.getItem('bunnyChatContacts');
+                    if (cachedContacts) {
+                        state.contactsCache = JSON.parse(cachedContacts);
+                    }
                 } catch (e) {
                     localStorage.removeItem('bunnyChatUser');
+                    localStorage.removeItem('bunnyChatContacts');
                 }
             }
         }
@@ -461,6 +590,7 @@
             elements.buttons.showContacts.addEventListener('click', () => toggleSection('contacts'));
             elements.buttons.showQR.addEventListener('click', () => {
                 toggleSection('qr');
+                showUserQRInfo();
                 generateQrCode();
             });
             elements.buttons.scanQR.addEventListener('click', () => toggleSection('scan'));
@@ -473,6 +603,9 @@
             
             // Utilitários
             elements.buttons.copyUserId.addEventListener('click', copyUserId);
+            elements.buttons.shareQR.addEventListener('click', shareQRCode);
+            elements.buttons.downloadQR.addEventListener('click', downloadQRCode);
+            elements.buttons.switchCamera.addEventListener('click', switchCamera);
         }
 
         // Mostra uma tela específica
@@ -490,6 +623,11 @@
             // Mostra a tela solicitada
             state.currentScreen = screenName;
             elements.screens[screenName].classList.add('active');
+            
+            // Carrega contatos se for a tela principal
+            if (screenName === 'main') {
+                loadContacts();
+            }
         }
 
         // Alterna entre seções na tela principal
@@ -505,6 +643,15 @@
                 elements.sections[sectionName].style.display = 'block';
                 stopQrScanner();
             }
+        }
+
+        // Mostra informações do usuário na seção QR
+        function showUserQRInfo() {
+            if (!state.currentUser) return;
+            
+            elements.displays.userNameDisplay.textContent = state.currentUser.name;
+            elements.displays.userIdDisplayText.textContent = state.currentUser.id;
+            elements.inputs.userIdInput.value = state.currentUser.id;
         }
 
         // Cria um novo usuário
@@ -542,6 +689,12 @@
                     localStorage.setItem('bunnyChatUser', JSON.stringify(user));
                     showScreen('main');
                     loadContacts();
+                    
+                    // Carrega contatos do cache local
+                    const cachedContacts = localStorage.getItem('bunnyChatContacts');
+                    if (cachedContacts) {
+                        state.contactsCache = JSON.parse(cachedContacts);
+                    }
                 } else {
                     alert('Usuário não encontrado');
                 }
@@ -553,20 +706,32 @@
             if (!state.currentUser) return;
             
             elements.displays.contactsList.innerHTML = '';
+            
+            // Primeiro verifica os contatos no cache local
+            if (Object.keys(state.contactsCache).length > 0) {
+                renderContacts(state.contactsCache);
+            }
+            
+            // Depois carrega do banco de dados para atualizar
             gun.get('users').get(state.currentUser.id).get('contacts').map().once((contact, id) => {
                 if (!contact) return;
                 
-                state.contacts[id] = contact;
+                // Atualiza o cache local
+                state.contactsCache[id] = contact;
+                localStorage.setItem('bunnyChatContacts', JSON.stringify(state.contactsCache));
                 
+                // Renderiza os contatos
+                renderContacts(state.contactsCache);
+            });
+        }
+
+        // Renderiza a lista de contatos
+        function renderContacts(contacts) {
+            elements.displays.contactsList.innerHTML = '';
+            
+            Object.entries(contacts).forEach(([id, contact]) => {
                 const contactElement = document.createElement('div');
                 contactElement.className = 'contact-item';
-                contactElement.style.display = 'flex';
-                contactElement.style.alignItems = 'center';
-                contactElement.style.padding = '10px';
-                contactElement.style.margin = '5px 0';
-                contactElement.style.backgroundColor = 'white';
-                contactElement.style.borderRadius = '10px';
-                contactElement.style.cursor = 'pointer';
                 
                 contactElement.innerHTML = `
                     <div class="avatar">${contact.name.charAt(0).toUpperCase()}</div>
@@ -574,15 +739,42 @@
                         <div style="font-weight: bold;">${contact.name}</div>
                         <div style="font-size: 0.8rem; opacity: 0.7;">${id}</div>
                     </div>
+                    <div class="contact-actions">
+                        <button class="contact-action-btn" title="Remover contato" data-id="${id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
                 `;
                 
-                contactElement.addEventListener('click', () => {
+                // Adiciona evento de clique para abrir o chat
+                contactElement.querySelector('.avatar, div:nth-child(2)').addEventListener('click', () => {
                     state.currentContact = { id, ...contact };
                     showChatScreen();
                 });
                 
+                // Adiciona evento para remover contato
+                contactElement.querySelector('.contact-action-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeContact(id);
+                });
+                
                 elements.displays.contactsList.appendChild(contactElement);
             });
+        }
+
+        // Remove um contato
+        function removeContact(contactId) {
+            if (!confirm('Tem certeza que deseja remover este contato?')) return;
+            
+            // Remove do banco de dados
+            gun.get('users').get(state.currentUser.id).get('contacts').get(contactId).put(null);
+            
+            // Remove do cache local
+            delete state.contactsCache[contactId];
+            localStorage.setItem('bunnyChatContacts', JSON.stringify(state.contactsCache));
+            
+            // Recarrega a lista de contatos
+            loadContacts();
         }
 
         // Mostra a tela de chat
@@ -627,6 +819,7 @@
             if (!state.currentUser) return;
             
             elements.displays.chatMessages.innerHTML = '';
+            let hasMessages = false;
             
             gun.get('users').get(state.currentUser.id).get('messages').map().once((message, id) => {
                 if (!message || state.processedMessages.has(message.id)) return;
@@ -639,6 +832,7 @@
                 
                 if (!isRelevant) return;
                 
+                hasMessages = true;
                 const isSender = message.sender === state.currentUser.id;
                 const senderName = isSender ? 'Você' : state.currentContact.name;
                 
@@ -653,7 +847,7 @@
                         <div class="message-time">${formatTime(message.timestamp)}</div>
                     </div>
                     <div class="message-content">
-                        ${message.text}
+                        ${escapeHtml(message.text)}
                     </div>
                 `;
                 
@@ -671,7 +865,7 @@
                 }
             });
             
-            if (elements.displays.chatMessages.children.length === 0) {
+            if (!hasMessages) {
                 elements.displays.chatMessages.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-comment-dots"></i>
@@ -692,7 +886,8 @@
                 version: 1,
                 userId: state.currentUser.id,
                 token: qrToken,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                userName: state.currentUser.name
             });
             
             // Atualiza o token no usuário
@@ -715,16 +910,58 @@
                 }
             });
             
-            elements.displays.userIdDisplay.value = state.currentUser.id;
+            elements.inputs.userIdInput.value = state.currentUser.id;
+        }
+
+        // Compartilha o QR Code
+        function shareQRCode() {
+            if (!state.currentUser) return;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Meu BunnyChat QR Code',
+                    text: `Adicione-me no BunnyChat! Meu nome: ${state.currentUser.name}`,
+                    url: `${window.location.href}?user=${state.currentUser.id}`
+                }).catch(err => {
+                    console.error('Erro ao compartilhar:', err);
+                    copyUserId();
+                });
+            } else {
+                // Fallback para copiar o ID
+                copyUserId();
+            }
+        }
+
+        // Baixa o QR Code como imagem
+        function downloadQRCode() {
+            const canvas = elements.displays.qrCode;
+            const link = document.createElement('a');
+            link.download = `BunnyChat-${state.currentUser.name}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Copia o ID do usuário
+        function copyUserId() {
+            elements.inputs.userIdInput.select();
+            document.execCommand('copy');
+            alert('ID copiado para a área de transferência!');
+        }
+
+        // Alterna entre câmeras (frontal/traseira)
+        function switchCamera() {
+            state.currentCamera = state.currentCamera === 'environment' ? 'user' : 'environment';
+            stopQrScanner();
+            startQrScanner();
         }
 
         // Inicia o scanner de QR Code
         function startQrScanner() {
-            state.lastScannedQR = null;
+            stopQrScanner();
             
             navigator.mediaDevices.getUserMedia({
                 video: {
-                    facingMode: 'environment',
+                    facingMode: state.currentCamera,
                     width: { ideal: 1280 },
                     height: { ideal: 720 }
                 }
@@ -765,10 +1002,6 @@
                                             return;
                                         }
                                         
-                                        const qrKey = `${qrData.userId}-${qrData.token}`;
-                                        if (state.lastScannedQR === qrKey) return;
-                                        state.lastScannedQR = qrKey;
-                                        
                                         const now = Date.now();
                                         if (qrData.timestamp && (now - qrData.timestamp > 300000)) {
                                             alert('QR Code expirado');
@@ -778,7 +1011,7 @@
                                         gun.get('users').get(qrData.userId).once((user) => {
                                             if (user && user.qrToken === qrData.token) {
                                                 stopQrScanner();
-                                                addContact(qrData.userId, user.name);
+                                                addContact(qrData.userId, user.name || qrData.userName || 'Novo Contato');
                                             } else {
                                                 alert('QR Code inválido');
                                             }
@@ -823,12 +1056,11 @@
                 elements.displays.qrVideo.srcObject = null;
             }
             elements.displays.scanOverlay.style.display = 'flex';
-            state.lastScannedQR = null;
         }
 
         // Adiciona um novo contato
         function addContact(userId, userName) {
-            if (!state.currentUser || !userId || !userName) return;
+            if (!state.currentUser || !userId) return;
             
             const contact = {
                 id: userId,
@@ -844,20 +1076,24 @@
                 name: state.currentUser.name
             });
             
+            // Atualiza o cache local
+            state.contactsCache[userId] = contact;
+            localStorage.setItem('bunnyChatContacts', JSON.stringify(state.contactsCache));
+            
             alert(`Contato ${userName} adicionado com sucesso!`);
             loadContacts();
-        }
-
-        // Copia o ID do usuário
-        function copyUserId() {
-            elements.displays.userIdDisplay.select();
-            document.execCommand('copy');
-            alert('ID copiado para a área de transferência!');
         }
 
         // Formata o tempo
         function formatTime(timestamp) {
             return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Sanitiza HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Inicializa o aplicativo
