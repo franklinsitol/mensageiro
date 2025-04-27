@@ -92,4 +92,52 @@ class BunnyChat {
 // Inicializa quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new BunnyChat();
+class BunnyChat {
+    // ... métodos anteriores
+
+    showQRCodeSection() {
+        this.showSection('qr');
+        if (!this.state.currentUser) return;
+        
+        document.getElementById('qrUserName').textContent = this.state.currentUser.name;
+        document.getElementById('qrUserId').textContent = this.state.currentUser.id;
+    }
+
+    addContact(userId, userName) {
+        if (!userId || !userName) return;
+        
+        this.state.contacts[userId] = { id: userId, name: userName };
+        this.renderContacts();
+        showAlert(`${userName} adicionado!`, 'success');
+    }
+
+    renderContacts() {
+        const list = document.getElementById('contactsList');
+        list.innerHTML = '';
+        
+        Object.values(this.state.contacts).forEach(contact => {
+            const contactEl = document.createElement('div');
+            contactEl.className = 'contact-item';
+            contactEl.innerHTML = `
+                <div class="avatar">${contact.name.charAt(0)}</div>
+                <div class="contact-name">${contact.name}</div>
+                <button class="chat-btn" data-id="${contact.id}">
+                    <i class="fas fa-comment"></i>
+                </button>
+            `;
+            
+            contactEl.querySelector('.chat-btn').addEventListener('click', () => {
+                this.openChat(contact);
+            });
+            
+            list.appendChild(contactEl);
+        });
+    }
+
+    openChat(contact) {
+        this.state.currentContact = contact;
+        this.showSection('chat');
+        this.loadMessages();
+    }
+}
 });
