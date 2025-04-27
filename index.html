@@ -41,5 +41,37 @@
     <script src="js/qrcode.js"></script>
     <script src="js/webrtc.js"></script>
     <script src="js/app.js" type="module"></script>
+    <!-- Adicione isso dentro do container -->
+<div class="container">
+    <!-- Tela de autenticação -->
+    <div id="authSection" class="main-section">
+        <!-- Conteúdo da autenticação -->
+    </div>
+
+    <!-- Tela principal -->
+    <div id="mainSection" class="main-section hidden">
+        <!-- Seções -->
+        <div id="contactsSection" class="main-section hidden">
+            <h2>Seus Contatos</h2>
+            <div id="contactsList"></div>
+        </div>
+
+        <div id="qrSection" class="main-section hidden">
+            <h2>Meu QR Code</h2>
+            <canvas id="qrCanvas"></canvas>
+            <button id="copyBtn">Copiar ID</button>
+        </div>
+
+        <div id="scanSection" class="main-section hidden">
+            <h2>Escanear QR Code</h2>
+            <video id="qrVideo" playsinline></video>
+        </div>
+    </div>
+
+    <!-- Tela de chat -->
+    <div id="chatSection" class="main-section hidden">
+        <!-- Interface do chat -->
+    </div>
+</div>
 </body>
 </html>
