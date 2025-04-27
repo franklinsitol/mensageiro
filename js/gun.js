@@ -1,53 +1,26 @@
-export function initGun(app) {
+export function initGunDB(app) {
     const gun = Gun({
-        peers: ['https://gun-manhattan.herokuapp.com/gun'],
-        localStorage: false,
-        radisk: false
+        peers: ['https://gun-manhattan.herokuapp.com/gun']
     });
 
-    // Compartilha a instância Gun com a app
     app.gun = gun;
-
-    // Métodos para manipulação de dados
+    
+    gun.get('users').map().on((user, id) => {
+        if (user && id === app.state.currentUser?.id) {
+            app.state.currentUser = user;
+        }
+    });
+    
     app.methods = {
-        createUser: async (userData) => {
+        saveUser: (userData) => {
             return new Promise((resolve) => {
                 gun.get('users').get(userData.id).put(userData, ack => {
-                    if (ack.err) {
-                        console.error('Erro ao criar usuário:', ack.err);
-                        resolve(null);
-                    } else {
+                    if (!ack.err) {
+                        localStorage.setItem('bunnyChatUser', JSON.stringify(userData));
                         resolve(userData);
                     }
                 });
             });
-        },
-
-        loadUser: async (userId) => {
-            return new Promise((resolve) => {
-                gun.get('users').get(userId).once(user => {
-                    resolve(user || null);
-                });
-            });
-        },
-
-        addContact: (userId, contactData) => {
-            gun.get('users').get(userId).get('contacts').get(contactData.id).put(contactData);
-        },
-
-        sendMessage: (messageData) => {
-            const messageId = Gun.text.random(16);
-            // Para o remetente
-            gun.get('users').get(messageData.sender).get('messages').get(messageId).put(messageData);
-            // Para o destinatário
-            gun.get('users').get(messageData.receiver).get('messages').get(messageId).put(messageData);
-            return messageId;
         }
     };
-
-    // Monitoramento de chamadas recebidas
-    gun.get('users').get(app.state.currentUser?.id).get('calls').map().on(async (data, callId) => {
-        if (!data || !data.offer) return;
-        app.handleIncomingCall(data, callId);
-    });
 }
