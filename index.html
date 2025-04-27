@@ -3,352 +3,865 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#FF9BB3">
-    <meta name="description" content="BunnyChat - Mensagens Fofinhas e Seguras">
     <title>BunnyChat - Mensagens Fofinhas</title>
     
-    <!-- Manifest PWA -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- Ícones para PWA -->
-    <link rel="icon" href="icons/favicon.ico">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    
-    <!-- CSS e Fontes com pré-carregamento -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/gun/gun.js" as="script">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/gun/sea.js" as="script">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js" as="script">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" as="script">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- Fontes -->
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Short+Stack&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* ... (mantenha todos os estilos anteriores) ... */
+        :root {
+            --primary: #FF9BB3;
+            --secondary: #FFD1DC;
+            --dark: #5A2A3E;
+            --light: #FFF2F5;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Comic Neue', cursive;
+            background-color: var(--light);
+            color: var(--dark);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-family: 'Short Stack', cursive;
+            font-size: 1.8rem;
+        }
+        
+        .screen {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+        
+        .screen.active {
+            display: flex;
+        }
+        
+        .chat-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .back-button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+            color: var(--dark);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            background-color: white;
+            overflow-y: auto;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .message-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .message-sender {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .message-time {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        
+        .message-content {
+            word-wrap: break-word;
+        }
+        
+        .message-input {
+            display: flex;
+            margin-top: 10px;
+        }
+        
+        .message-input input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid var(--primary);
+            border-radius: 20px 0 0 20px;
+            outline: none;
+        }
+        
+        .message-input button {
+            padding: 10px 15px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0 20px 20px 0;
+            cursor: pointer;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--dark);
+            opacity: 0.7;
+        }
+        
+        .empty-state i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .qr-code {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .qr-code canvas {
+            background-color: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .user-id {
+            display: flex;
+            margin: 15px 0;
+        }
+        
+        .user-id input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid var(--primary);
+            border-radius: 20px 0 0 20px;
+            outline: none;
+        }
+        
+        .user-id button {
+            padding: 10px 15px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0 20px 20px 0;
+            cursor: pointer;
+        }
+        
+        .qr-scanner {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .qr-scanner video {
+            width: 100%;
+            border-radius: 10px;
+            background-color: black;
+        }
+        
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-direction: column;
+            border-radius: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: 'Comic Neue', cursive;
+            font-weight: bold;
+        }
+        
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+        
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <!-- ... (mantenha toda a estrutura HTML anterior) ... -->
+    <header>
+        <h1>BunnyChat</h1>
+    </header>
+    
+    <div class="container">
+        <!-- Tela de seleção de usuário -->
+        <div id="userSelectScreen" class="screen active">
+            <div class="btn-group">
+                <button id="newUserBtn" class="btn">Novo Usuário</button>
+                <button id="existingUserBtn" class="btn">Usuário Existente</button>
+            </div>
+        </div>
+        
+        <!-- Tela de novo usuário -->
+        <div id="newUserScreen" class="screen">
+            <div style="text-align: center; margin: 20px 0;">
+                <h2>Criar Novo Usuário</h2>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="newUserName">Seu Nome:</label>
+                <input type="text" id="newUserName" placeholder="Digite seu nome" style="width: 100%; padding: 10px; margin-top: 5px; border: 2px solid var(--primary); border-radius: 10px;">
+            </div>
+            
+            <button id="createUserBtn" class="btn" style="width: 100%;">Criar Usuário</button>
+            <button id="backToSelectFromNew" class="btn btn-small" style="margin-top: 10px; width: 100%;">Voltar</button>
+        </div>
+        
+        <!-- Tela de usuário existente -->
+        <div id="existingUserScreen" class="screen">
+            <div style="text-align: center; margin: 20px 0;">
+                <h2>Usar Usuário Existente</h2>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="existingUserId">ID do Usuário:</label>
+                <input type="text" id="existingUserId" placeholder="Digite seu ID de usuário" style="width: 100%; padding: 10px; margin-top: 5px; border: 2px solid var(--primary); border-radius: 10px;">
+            </div>
+            
+            <button id="loadUserBtn" class="btn" style="width: 100%;">Carregar Usuário</button>
+            <button id="backToSelectFromExisting" class="btn btn-small" style="margin-top: 10px; width: 100%;">Voltar</button>
+        </div>
+        
+        <!-- Tela principal do chat -->
+        <div id="mainScreen" class="screen">
+            <div class="btn-group">
+                <button id="showContactsBtn" class="btn">Contatos</button>
+                <button id="showQRBtn" class="btn">Meu QR Code</button>
+                <button id="scanQRBtn" class="btn">Escanear QR</button>
+            </div>
+            
+            <div id="contactsSection" style="margin-top: 20px; display: none;">
+                <h3>Seus Contatos</h3>
+                <div id="contactsList" style="margin-top: 10px;"></div>
+            </div>
+            
+            <div id="qrSection" style="margin-top: 20px; display: none; text-align: center;">
+                <h3>Meu QR Code</h3>
+                <div class="qr-code">
+                    <canvas id="qrCodeCanvas"></canvas>
+                </div>
+                <div class="user-id">
+                    <input type="text" id="userIdDisplay" readonly>
+                    <button id="copyUserIdBtn"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+            
+            <div id="scanSection" class="qr-scanner" style="margin-top: 20px; display: none;">
+                <video id="qrVideo"></video>
+                <div class="scan-overlay">
+                    <i class="fas fa-qrcode" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                    <p>Posicione o QR Code na área de leitura</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tela de chat -->
+        <div id="chatScreen" class="screen">
+            <div class="chat-header">
+                <button id="backToMainBtn" class="back-button"><i class="fas fa-arrow-left"></i></button>
+                <div class="avatar" id="chatAvatar"></div>
+                <div id="chatContactName"></div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="empty-state">
+                    <i class="fas fa-comment-dots"></i>
+                    <p>Nenhuma mensagem ainda</p>
+                    <p>Envie uma mensagem para começar a conversa!</p>
+                </div>
+            </div>
+            
+            <div class="message-input">
+                <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+                <button id="sendMessageBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
 
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    
     <script>
-        // Configuração otimizada do Gun.js
+        // Configuração do Gun.js
         const gun = Gun({
             peers: ['https://gun-manhattan.herokuapp.com/gun'],
             localStorage: false,
             radisk: false
         });
 
-        // Estado simplificado da aplicação
+        // Estado da aplicação
         const state = {
             currentUser: null,
             currentContact: null,
-            processedMessages: new Set(),
-            lastScannedQR: null
+            contacts: {},
+            messages: {},
+            qrScanner: null,
+            currentScreen: 'userSelect',
+            processedMessages: new Set()
         };
 
-        // Cache de elementos DOM
+        // Elementos DOM
         const elements = {
-            displays: {
-                chatMessages: document.querySelector('.chat-messages'),
-                qrCode: document.querySelector('.qr-code canvas'),
-                userId: document.querySelector('#userId')
+            screens: {
+                userSelect: document.getElementById('userSelectScreen'),
+                newUser: document.getElementById('newUserScreen'),
+                existingUser: document.getElementById('existingUserScreen'),
+                main: document.getElementById('mainScreen'),
+                chat: document.getElementById('chatScreen')
+            },
+            buttons: {
+                newUser: document.getElementById('newUserBtn'),
+                existingUser: document.getElementById('existingUserBtn'),
+                createUser: document.getElementById('createUserBtn'),
+                loadUser: document.getElementById('loadUserBtn'),
+                backToSelectFromNew: document.getElementById('backToSelectFromNew'),
+                backToSelectFromExisting: document.getElementById('backToSelectFromExisting'),
+                showContacts: document.getElementById('showContactsBtn'),
+                showQR: document.getElementById('showQRBtn'),
+                scanQR: document.getElementById('scanQRBtn'),
+                backToMain: document.getElementById('backToMainBtn'),
+                sendMessage: document.getElementById('sendMessageBtn'),
+                copyUserId: document.getElementById('copyUserIdBtn')
             },
             inputs: {
-                message: document.querySelector('#messageInput')
+                newUserName: document.getElementById('newUserName'),
+                existingUserId: document.getElementById('existingUserId'),
+                message: document.getElementById('messageInput'),
+                userIdDisplay: document.getElementById('userIdDisplay')
             },
-            video: document.querySelector('#qrScanner video'),
-            scanOverlay: document.querySelector('.scan-overlay')
+            displays: {
+                contactsList: document.getElementById('contactsList'),
+                qrCode: document.getElementById('qrCodeCanvas'),
+                chatMessages: document.getElementById('chatMessages'),
+                chatAvatar: document.getElementById('chatAvatar'),
+                chatContactName: document.getElementById('chatContactName'),
+                qrVideo: document.getElementById('qrVideo'),
+                scanOverlay: document.querySelector('.scan-overlay')
+            },
+            sections: {
+                contacts: document.getElementById('contactsSection'),
+                qr: document.getElementById('qrSection'),
+                scan: document.getElementById('scanSection')
+            }
         };
 
-        // Função utilitária para mostrar notificações
-        function showNotification(message, type = 'info') {
-            console.log(`[${type}] ${message}`);
-            // Implementação da notificação UI
+        // Inicialização
+        function init() {
+            setupEventListeners();
+            checkForExistingUser();
         }
 
-        // Função otimizada para enviar mensagens
-        async function sendMessage(contactId, messageText) {
-            if (!state.currentUser || !messageText.trim()) return;
-            
-            try {
-                const messageId = Gun.text.random(16);
-                const message = {
-                    id: messageId,
-                    sender: state.currentUser.id,
-                    receiver: contactId,
-                    text: messageText.trim(),
-                    timestamp: Date.now(),
-                    read: false
-                };
-                
-                if (state.processedMessages.has(messageId)) return;
-                state.processedMessages.add(messageId);
-                
-                // Envio otimizado usando Promise.all
-                await Promise.all([
-                    gun.get('users').get(state.currentUser.id).get('messages').get(messageId).put(message),
-                    gun.get('users').get(contactId).get('messages').get(messageId).put(message)
-                ]);
-                
-                elements.inputs.message.value = '';
-            } catch (error) {
-                showNotification('Erro ao enviar mensagem', 'error');
-                console.error('Erro no sendMessage:', error);
+        // Verifica se há usuário salvo localmente
+        function checkForExistingUser() {
+            const savedUser = localStorage.getItem('bunnyChatUser');
+            if (savedUser) {
+                try {
+                    state.currentUser = JSON.parse(savedUser);
+                    showScreen('main');
+                } catch (e) {
+                    localStorage.removeItem('bunnyChatUser');
+                }
             }
         }
 
-        // Função otimizada para carregar mensagens
+        // Configura os event listeners
+        function setupEventListeners() {
+            // Navegação entre telas
+            elements.buttons.newUser.addEventListener('click', () => showScreen('newUser'));
+            elements.buttons.existingUser.addEventListener('click', () => showScreen('existingUser'));
+            elements.buttons.backToSelectFromNew.addEventListener('click', () => showScreen('userSelect'));
+            elements.buttons.backToSelectFromExisting.addEventListener('click', () => showScreen('userSelect'));
+            elements.buttons.backToMain.addEventListener('click', () => {
+                stopQrScanner();
+                showScreen('main');
+            });
+            
+            // Ações de usuário
+            elements.buttons.createUser.addEventListener('click', createUser);
+            elements.buttons.loadUser.addEventListener('click', loadUser);
+            
+            // Ações principais
+            elements.buttons.showContacts.addEventListener('click', () => toggleSection('contacts'));
+            elements.buttons.showQR.addEventListener('click', () => {
+                toggleSection('qr');
+                generateQrCode();
+            });
+            elements.buttons.scanQR.addEventListener('click', () => toggleSection('scan'));
+            
+            // Chat
+            elements.buttons.sendMessage.addEventListener('click', sendMessage);
+            elements.inputs.message.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            // Utilitários
+            elements.buttons.copyUserId.addEventListener('click', copyUserId);
+        }
+
+        // Mostra uma tela específica
+        function showScreen(screenName) {
+            // Esconde todas as telas
+            Object.values(elements.screens).forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Esconde todas as seções
+            Object.values(elements.sections).forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Mostra a tela solicitada
+            state.currentScreen = screenName;
+            elements.screens[screenName].classList.add('active');
+        }
+
+        // Alterna entre seções na tela principal
+        function toggleSection(sectionName) {
+            Object.values(elements.sections).forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            if (sectionName === 'scan') {
+                elements.sections[sectionName].style.display = 'flex';
+                startQrScanner();
+            } else {
+                elements.sections[sectionName].style.display = 'block';
+                stopQrScanner();
+            }
+        }
+
+        // Cria um novo usuário
+        function createUser() {
+            const userName = elements.inputs.newUserName.value.trim();
+            if (!userName) return;
+            
+            const userId = Gun.text.random(16);
+            const user = {
+                id: userId,
+                name: userName,
+                createdAt: Date.now()
+            };
+            
+            gun.get('users').get(userId).put(user, ack => {
+                if (ack.err) {
+                    alert('Erro ao criar usuário: ' + ack.err);
+                } else {
+                    state.currentUser = user;
+                    localStorage.setItem('bunnyChatUser', JSON.stringify(user));
+                    showScreen('main');
+                    loadContacts();
+                }
+            });
+        }
+
+        // Carrega um usuário existente
+        function loadUser() {
+            const userId = elements.inputs.existingUserId.value.trim();
+            if (!userId) return;
+            
+            gun.get('users').get(userId).once(user => {
+                if (user) {
+                    state.currentUser = user;
+                    localStorage.setItem('bunnyChatUser', JSON.stringify(user));
+                    showScreen('main');
+                    loadContacts();
+                } else {
+                    alert('Usuário não encontrado');
+                }
+            });
+        }
+
+        // Carrega os contatos do usuário
+        function loadContacts() {
+            if (!state.currentUser) return;
+            
+            elements.displays.contactsList.innerHTML = '';
+            gun.get('users').get(state.currentUser.id).get('contacts').map().once((contact, id) => {
+                if (!contact) return;
+                
+                state.contacts[id] = contact;
+                
+                const contactElement = document.createElement('div');
+                contactElement.className = 'contact-item';
+                contactElement.style.display = 'flex';
+                contactElement.style.alignItems = 'center';
+                contactElement.style.padding = '10px';
+                contactElement.style.margin = '5px 0';
+                contactElement.style.backgroundColor = 'white';
+                contactElement.style.borderRadius = '10px';
+                contactElement.style.cursor = 'pointer';
+                
+                contactElement.innerHTML = `
+                    <div class="avatar">${contact.name.charAt(0).toUpperCase()}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold;">${contact.name}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.7;">${id}</div>
+                    </div>
+                `;
+                
+                contactElement.addEventListener('click', () => {
+                    state.currentContact = { id, ...contact };
+                    showChatScreen();
+                });
+                
+                elements.displays.contactsList.appendChild(contactElement);
+            });
+        }
+
+        // Mostra a tela de chat
+        function showChatScreen() {
+            if (!state.currentContact) return;
+            
+            elements.displays.chatAvatar.textContent = state.currentContact.name.charAt(0).toUpperCase();
+            elements.displays.chatContactName.textContent = state.currentContact.name;
+            showScreen('chat');
+            loadChatMessages(state.currentContact.id);
+        }
+
+        // Envia uma mensagem
+        function sendMessage() {
+            if (!state.currentUser || !state.currentContact) return;
+            
+            const messageText = elements.inputs.message.value.trim();
+            if (!messageText) return;
+            
+            const messageId = Gun.text.random(16);
+            const message = {
+                id: messageId,
+                sender: state.currentUser.id,
+                receiver: state.currentContact.id,
+                text: messageText,
+                timestamp: Date.now(),
+                read: false
+            };
+            
+            // Salva a mensagem para o remetente
+            gun.get('users').get(state.currentUser.id).get('messages').get(messageId).put(message);
+            
+            // Salva a mensagem para o destinatário
+            gun.get('users').get(state.currentContact.id).get('messages').get(messageId).put(message);
+            
+            // Limpa o campo de mensagem
+            elements.inputs.message.value = '';
+        }
+
+        // Carrega as mensagens do chat
         function loadChatMessages(contactId) {
-            if (!state.currentUser || !contactId) return;
+            if (!state.currentUser) return;
             
             elements.displays.chatMessages.innerHTML = '';
             
-            const messages = gun.get('users').get(state.currentUser.id).get('messages');
-            const messageElements = [];
-            let hasMessages = false;
-            
-            messages.map().once((message, id) => {
+            gun.get('users').get(state.currentUser.id).get('messages').map().once((message, id) => {
                 if (!message || state.processedMessages.has(message.id)) return;
                 
                 state.processedMessages.add(message.id);
                 
+                // Verifica se a mensagem é para/deste contato
                 const isRelevant = (message.sender === contactId && message.receiver === state.currentUser.id) || 
                                   (message.sender === state.currentUser.id && message.receiver === contactId);
+                
                 if (!isRelevant) return;
                 
-                hasMessages = true;
-                messageElements.push(createMessageElement(message));
+                const isSender = message.sender === state.currentUser.id;
+                const senderName = isSender ? 'Você' : state.currentContact.name;
                 
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message-item';
+                messageElement.style.alignItems = isSender ? 'flex-end' : 'flex-start';
+                messageElement.style.backgroundColor = isSender ? 'var(--secondary)' : 'white';
+                messageElement.innerHTML = `
+                    <div class="message-header">
+                        ${!isSender ? `<div class="avatar message-avatar">${state.currentContact.name.charAt(0).toUpperCase()}</div>` : ''}
+                        <div class="message-sender">${senderName}</div>
+                        <div class="message-time">${formatTime(message.timestamp)}</div>
+                    </div>
+                    <div class="message-content">
+                        ${message.text}
+                    </div>
+                `;
+                
+                elements.displays.chatMessages.appendChild(messageElement);
+                
+                // Rolagem automática para a última mensagem
+                elements.displays.chatMessages.scrollTop = elements.displays.chatMessages.scrollHeight;
+                
+                // Marca a mensagem como lida se for do outro usuário
                 if (!isSender && !message.read) {
-                    markMessageAsRead(id, message);
+                    gun.get('users').get(state.currentUser.id).get('messages').get(id).put({
+                        ...message,
+                        read: true
+                    });
                 }
             });
             
-            if (hasMessages) {
-                elements.displays.chatMessages.append(...messageElements);
-                elements.displays.chatMessages.scrollTop = elements.displays.chatMessages.scrollHeight;
-            } else {
-                showEmptyState();
+            if (elements.displays.chatMessages.children.length === 0) {
+                elements.displays.chatMessages.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-comment-dots"></i>
+                        <p>Nenhuma mensagem ainda</p>
+                        <p>Envie uma mensagem para começar a conversa!</p>
+                    </div>
+                `;
             }
         }
 
-        function createMessageElement(message) {
-            const isSender = message.sender === state.currentUser.id;
-            const senderName = isSender ? 'Você' : state.currentContact.name;
-            
-            const messageElement = document.createElement('div');
-            messageElement.className = 'message-item';
-            messageElement.style.alignItems = isSender ? 'flex-end' : 'flex-start';
-            messageElement.style.backgroundColor = isSender ? 'var(--secondary)' : 'white';
-            
-            messageElement.innerHTML = `
-                <div class="message-header">
-                    ${!isSender ? `<div class="avatar message-avatar">${generateAvatarIcon(state.currentContact.name)}</div>` : ''}
-                    <div class="message-sender">${senderName}</div>
-                    <div class="message-time">${formatTime(message.timestamp)}</div>
-                </div>
-                <div class="message-content">
-                    ${escapeHtml(message.text)}
-                </div>
-            `;
-            
-            return messageElement;
-        }
-
-        function markMessageAsRead(id, message) {
-            gun.get('users').get(state.currentUser.id).get('messages').get(id).put({
-                ...message,
-                read: true
-            });
-        }
-
-        function showEmptyState() {
-            elements.displays.chatMessages.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-comment-dots"></i>
-                    <p>Nenhuma mensagem ainda</p>
-                    <p>Envie uma mensagem para começar a conversa!</p>
-                </div>
-            `;
-        }
-
-        // Função otimizada para gerar QR Code
-        async function generateQrCode() {
+        // Gera o QR Code do usuário
+        function generateQrCode() {
             if (!state.currentUser) return;
             
-            try {
-                const qrToken = Math.random().toString(36).slice(2, 12);
-                const qrData = JSON.stringify({
-                    app: "BunnyChat",
-                    version: 1,
-                    userId: state.currentUser.id,
-                    token: qrToken,
-                    timestamp: Date.now()
-                });
-                
-                await gun.get('users').get(state.currentUser.id).put({
-                    ...state.currentUser,
-                    qrToken
-                });
-                
-                QRCode.toCanvas(elements.displays.qrCode, qrData, {
-                    width: 200,
-                    margin: 2,
-                    color: {
-                        dark: '#5A2A3E',
-                        light: '#FFF2F5'
-                    }
-                });
-                
-                elements.displays.userId.value = state.currentUser.id;
-            } catch (error) {
-                showNotification('Erro ao gerar QR Code', 'error');
-                console.error('Erro no generateQrCode:', error);
-            }
-        }
-
-        // Scanner de QR Code otimizado
-        async function startQrScanner() {
-            state.lastScannedQR = null;
-            
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                });
-                
-                elements.video.srcObject = stream;
-                elements.video.setAttribute('playsinline', true);
-                await elements.video.play();
-                
-                elements.video.onplaying = () => elements.scanOverlay.style.display = 'none';
-                scanFrame();
-            } catch (error) {
-                handleCameraError(error);
-            }
-        }
-
-        function scanFrame() {
-            if (!elements.video.srcObject) return;
-            
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            
-            function processFrame() {
-                if (state.currentScreen !== 'scan') return;
-                
-                try {
-                    if (elements.video.readyState === elements.video.HAVE_ENOUGH_DATA) {
-                        canvas.width = elements.video.videoWidth;
-                        canvas.height = elements.video.videoHeight;
-                        ctx.drawImage(elements.video, 0, 0, canvas.width, canvas.height);
-                        
-                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                            inversionAttempts: 'dontInvert'
-                        });
-                        
-                        if (code) processQRCode(code.data);
-                    }
-                    requestAnimationFrame(processFrame);
-                } catch (error) {
-                    console.error('Erro no scanner:', error);
-                    stopQrScanner();
-                    showNotification('Erro no scanner de QR Code', 'error');
-                }
-            }
-            
-            processFrame();
-        }
-
-        function processQRCode(data) {
-            try {
-                const qrData = JSON.parse(data);
-                
-                if (!isValidQR(qrData)) return;
-                if (qrData.userId === state.currentUser.id) {
-                    showNotification('Você não pode adicionar a si mesmo!');
-                    return;
-                }
-                
-                const qrKey = `${qrData.userId}-${qrData.token}`;
-                if (state.lastScannedQR === qrKey) return;
-                state.lastScannedQR = qrKey;
-                
-                if (isQRExpired(qrData.timestamp)) {
-                    showNotification('QR Code expirado');
-                    return;
-                }
-                
-                verifyAndAddContact(qrData);
-            } catch (error) {
-                console.error('Erro ao processar QR Code:', error);
-            }
-        }
-
-        function isValidQR(qrData) {
-            return qrData.app === "BunnyChat" && qrData.userId && qrData.token;
-        }
-
-        function isQRExpired(timestamp) {
-            return timestamp && (Date.now() - timestamp > 300000);
-        }
-
-        async function verifyAndAddContact(qrData) {
-            const user = await new Promise(resolve => {
-                gun.get('users').get(qrData.userId).once(resolve);
+            const qrToken = Math.random().toString(36).slice(2, 12);
+            const qrData = JSON.stringify({
+                app: "BunnyChat",
+                version: 1,
+                userId: state.currentUser.id,
+                token: qrToken,
+                timestamp: Date.now()
             });
             
-            if (user && user.qrToken === qrData.token) {
-                stopQrScanner();
-                addContact(qrData.userId);
-            } else {
-                showNotification('QR Code inválido');
-            }
-        }
-
-        function handleCameraError(error) {
-            console.error('Erro ao acessar a câmera:', error);
-            elements.scanOverlay.innerHTML = `
-                <div>
-                    <i class="fas fa-camera-slash"></i>
-                    <p>Não foi possível acessar a câmera</p>
-                    <p>Verifique as permissões do navegador</p>
-                    <button id="tryAgainBtn" class="btn btn-small">Tentar novamente</button>
-                </div>
-            `;
+            // Atualiza o token no usuário
+            gun.get('users').get(state.currentUser.id).put({
+                ...state.currentUser,
+                qrToken: qrToken
+            });
             
-            document.getElementById('tryAgainBtn').onclick = startQrScanner;
+            // Gera o QR Code
+            QRCode.toCanvas(elements.displays.qrCode, qrData, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#5A2A3E',
+                    light: '#FFF2F5'
+                }
+            }, (error) => {
+                if (error) {
+                    console.error('Erro ao gerar QR Code:', error);
+                }
+            });
+            
+            elements.displays.userIdDisplay.value = state.currentUser.id;
         }
 
+        // Inicia o scanner de QR Code
+        function startQrScanner() {
+            state.lastScannedQR = null;
+            
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            }).then(function(stream) {
+                elements.displays.qrVideo.srcObject = stream;
+                elements.displays.qrVideo.setAttribute('playsinline', true);
+                elements.displays.qrVideo.play();
+                
+                elements.displays.qrVideo.onplaying = () => {
+                    elements.displays.scanOverlay.style.display = 'none';
+                };
+                
+                const canvasElement = document.createElement('canvas');
+                const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
+                let scanning = true;
+                
+                function scanFrame() {
+                    if (!scanning) return;
+                    
+                    try {
+                        if (elements.displays.qrVideo.readyState === elements.displays.qrVideo.HAVE_ENOUGH_DATA) {
+                            canvasElement.width = elements.displays.qrVideo.videoWidth;
+                            canvasElement.height = elements.displays.qrVideo.videoHeight;
+                            canvas.drawImage(elements.displays.qrVideo, 0, 0, canvasElement.width, canvasElement.height);
+                            
+                            const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                                inversionAttempts: 'dontInvert'
+                            });
+                            
+                            if (code) {
+                                try {
+                                    const qrData = JSON.parse(code.data);
+                                    
+                                    if (qrData.app === "BunnyChat" && qrData.userId && qrData.token) {
+                                        if (qrData.userId === state.currentUser.id) {
+                                            alert('Você não pode adicionar a si mesmo!');
+                                            return;
+                                        }
+                                        
+                                        const qrKey = `${qrData.userId}-${qrData.token}`;
+                                        if (state.lastScannedQR === qrKey) return;
+                                        state.lastScannedQR = qrKey;
+                                        
+                                        const now = Date.now();
+                                        if (qrData.timestamp && (now - qrData.timestamp > 300000)) {
+                                            alert('QR Code expirado');
+                                            return;
+                                        }
+                                        
+                                        gun.get('users').get(qrData.userId).once((user) => {
+                                            if (user && user.qrToken === qrData.token) {
+                                                stopQrScanner();
+                                                addContact(qrData.userId, user.name);
+                                            } else {
+                                                alert('QR Code inválido');
+                                            }
+                                        });
+                                    }
+                                } catch (e) {
+                                    console.error('Erro ao ler QR Code:', e);
+                                }
+                            }
+                        }
+                        
+                        requestAnimationFrame(scanFrame);
+                    } catch (e) {
+                        console.error('Erro no scanner:', e);
+                        scanning = false;
+                        stopQrScanner();
+                    }
+                }
+                
+                scanFrame();
+            }).catch(function(err) {
+                console.error('Erro ao acessar a câmera:', err);
+                elements.displays.scanOverlay.innerHTML = `
+                    <div>
+                        <i class="fas fa-camera-slash"></i>
+                        <p>Não foi possível acessar a câmera</p>
+                        <p>Verifique as permissões do navegador</p>
+                        <button id="tryAgainBtn" class="btn btn-small" style="margin-top: 10px;">Tentar novamente</button>
+                    </div>
+                `;
+                
+                document.getElementById('tryAgainBtn').addEventListener('click', startQrScanner);
+            });
+        }
+
+        // Para o scanner de QR Code
         function stopQrScanner() {
-            if (elements.video.srcObject) {
-                elements.video.srcObject.getTracks().forEach(track => track.stop());
-                elements.video.srcObject = null;
+            if (elements.displays.qrVideo.srcObject) {
+                elements.displays.qrVideo.srcObject.getTracks().forEach(track => {
+                    track.stop();
+                });
+                elements.displays.qrVideo.srcObject = null;
             }
-            elements.scanOverlay.style.display = 'flex';
+            elements.displays.scanOverlay.style.display = 'flex';
             state.lastScannedQR = null;
         }
 
-        // Utilitários
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        // Adiciona um novo contato
+        function addContact(userId, userName) {
+            if (!state.currentUser || !userId || !userName) return;
+            
+            const contact = {
+                id: userId,
+                name: userName
+            };
+            
+            // Adiciona o contato ao usuário atual
+            gun.get('users').get(state.currentUser.id).get('contacts').get(userId).put(contact);
+            
+            // Adiciona o usuário atual como contato do outro usuário
+            gun.get('users').get(userId).get('contacts').get(state.currentUser.id).put({
+                id: state.currentUser.id,
+                name: state.currentUser.name
+            });
+            
+            alert(`Contato ${userName} adicionado com sucesso!`);
+            loadContacts();
         }
 
+        // Copia o ID do usuário
+        function copyUserId() {
+            elements.displays.userIdDisplay.select();
+            document.execCommand('copy');
+            alert('ID copiado para a área de transferência!');
+        }
+
+        // Formata o tempo
         function formatTime(timestamp) {
             return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        function generateAvatarIcon(name) {
-            return name ? name.charAt(0).toUpperCase() : '?';
-        }
-
-        /* ... (outras funções auxiliares conforme necessário) ... */
+        // Inicializa o aplicativo
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
