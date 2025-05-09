@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BunnyChat - Mensagens Fofinhas</title>
+    <title>BunnyChat Completo</title>
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Short+Stack&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Estilos consolidados e verificados */
         :root {
             --primary: #FF9BB3;
             --secondary: #FFD6E0;
@@ -22,28 +24,29 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Short Stack', 'Comic Neue', cursive;
         }
 
         body {
-            font-family: 'Short Stack', 'Comic Neue', cursive;
             background-color: var(--light);
             color: #333;
             line-height: 1.6;
+            padding: 20px;
         }
 
         .container {
             max-width: 100%;
-            padding: 20px;
+            margin: 0 auto;
         }
 
         .screen {
             display: none;
-            background-color: white;
+            background: white;
             border-radius: 20px;
             padding: 20px;
-            margin: 0 auto;
-            max-width: 500px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            max-width: 500px;
         }
 
         .screen.active {
@@ -56,21 +59,27 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        h1, h2 {
-            color: var(--accent);
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .logo {
+        .header {
             text-align: center;
             margin-bottom: 20px;
         }
 
-        .logo i {
-            font-size: 3rem;
-            color: var(--primary);
+        h1 {
+            color: var(--accent);
             margin-bottom: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--secondary);
+            border-radius: 50px;
+            margin-bottom: 10px;
+            font-size: 16px;
         }
 
         .btn {
@@ -79,12 +88,12 @@
             border: none;
             border-radius: 50px;
             padding: 12px 20px;
-            font-family: inherit;
+            font-size: 16px;
             cursor: pointer;
-            display: inline-block;
-            margin: 10px 5px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            transition: all 0.3s;
         }
 
         .btn:hover {
@@ -97,19 +106,6 @@
             color: var(--dark);
         }
 
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid var(--secondary);
-            border-radius: 50px;
-            font-family: inherit;
-            margin-bottom: 10px;
-        }
-
         .avatar {
             width: 50px;
             height: 50px;
@@ -118,38 +114,62 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.5rem;
+            font-size: 20px;
             color: var(--accent);
             margin-right: 15px;
+        }
+
+        .contact-list {
+            margin-top: 20px;
         }
 
         .contact-item {
             display: flex;
             align-items: center;
             padding: 15px;
-            margin-bottom: 10px;
-            background-color: white;
+            background: white;
             border-radius: 15px;
+            margin-bottom: 10px;
             box-shadow: 0 3px 6px rgba(0,0,0,0.05);
-            cursor: pointer;
         }
 
-        .contact-info {
-            flex-grow: 1;
+        .qr-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
         }
 
-        .contact-name {
-            font-weight: bold;
-            color: var(--dark);
+        /* Estilos do scanner QR */
+        .scan-container {
+            width: 100%;
+            height: 300px;
+            background-color: #f0f0f0;
+            border-radius: 15px;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
         }
 
-        .contact-actions button {
-            background: none;
-            border: none;
-            color: var(--text-light);
-            font-size: 1rem;
-            cursor: pointer;
-            margin-left: 10px;
+        #qrVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            font-size: 1.2rem;
+            text-align: center;
+            padding: 20px;
         }
 
         .back-button {
@@ -175,14 +195,15 @@
     <div class="container">
         <!-- Tela de Login -->
         <div id="loginScreen" class="screen active">
-            <div class="logo">
-                <i class="fas fa-heart"></i>
+            <div class="header">
+                <i class="fas fa-heart" style="color: var(--accent); font-size: 3rem; margin-bottom: 10px;"></i>
                 <h1>BunnyChat</h1>
+                <p>Entre para começar</p>
             </div>
             
             <div class="input-group">
-                <input type="text" id="username" placeholder="Seu nome">
-                <input type="text" id="nickname" placeholder="Seu apelido">
+                <input type="text" id="username" placeholder="Seu nome" required>
+                <input type="text" id="nickname" placeholder="Seu apelido (opcional)">
             </div>
             
             <button id="loginBtn" class="btn">Entrar</button>
@@ -190,17 +211,22 @@
 
         <!-- Tela Principal -->
         <div id="mainScreen" class="screen">
-            <div class="profile-header">
-                <div class="avatar" id="userAvatar"></div>
-                <div>
-                    <div id="profileName"></div>
-                    <div id="profileNickname"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="avatar" id="userAvatar">?</div>
+                    <div>
+                        <div id="profileName">Usuário</div>
+                        <div id="profileNickname" style="color: #666;">@apelido</div>
+                    </div>
                 </div>
-                <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+                <button id="logoutBtn" class="btn-secondary" style="width: auto; padding: 10px 15px;">Sair</button>
             </div>
             
-            <h2>Contatos</h2>
-            <div id="contactsList"></div>
+            <h2 style="text-align: center; color: var(--accent); margin-bottom: 15px;">Contatos</h2>
+            
+            <div id="contactsList" class="contact-list">
+                <p style="text-align: center;">Carregando contatos...</p>
+            </div>
             
             <button id="addContactBtn" class="btn"><i class="fas fa-plus"></i> Adicionar Contato</button>
             <button id="showQrBtn" class="btn btn-secondary"><i class="fas fa-qrcode"></i> Meu QR Code</button>
@@ -209,56 +235,87 @@
         <!-- Tela de QR Code -->
         <div id="qrScreen" class="screen">
             <button class="back-button" id="backToMainFromQr"><i class="fas fa-arrow-left"></i></button>
-            <div class="logo">
-                <i class="fas fa-qrcode"></i>
+            <div class="header">
                 <h1>Meu QR Code</h1>
+                <p>Compartilhe para adicionar contatos</p>
             </div>
             
-            <div style="display: flex; justify-content: center; margin: 20px 0;">
+            <div class="qr-container">
                 <canvas id="qrCodeCanvas"></canvas>
             </div>
             
             <div class="input-group">
-                <input type="text" id="userIdDisplay" readonly>
+                <input type="text" id="userIdDisplay" placeholder="Seu ID" readonly>
             </div>
         </div>
 
         <!-- Tela de Adicionar Contato -->
         <div id="addContactScreen" class="screen">
             <button class="back-button" id="backToMainFromAddContact"><i class="fas fa-arrow-left"></i></button>
-            <div class="logo">
-                <i class="fas fa-user-plus"></i>
+            <div class="header">
                 <h1>Adicionar Contato</h1>
+                <p>Escolha como adicionar</p>
             </div>
             
+            <button id="scanQrBtn" class="btn"><i class="fas fa-qrcode"></i> Escanear QR Code</button>
+            <p style="text-align: center; margin: 15px 0;">ou</p>
+            
             <div class="input-group">
-                <input type="text" id="contactId" placeholder="Cole o ID do contato aqui">
-                <button id="addContactByIdBtn" class="btn">Adicionar por ID</button>
+                <input type="text" id="contactId" placeholder="Digite o ID do contato">
+                <button id="addContactByIdBtn" class="btn btn-secondary">Adicionar por ID</button>
             </div>
+        </div>
+
+        <!-- Tela de Scanner QR -->
+        <div id="scanScreen" class="screen">
+            <button class="back-button" id="backToAddContactFromScan"><i class="fas fa-arrow-left"></i></button>
+            <div class="header">
+                <h1>Escanear QR Code</h1>
+                <p>Aponte para o QR Code do contato</p>
+            </div>
+            
+            <div class="scan-container">
+                <video id="qrVideo" playsinline></video>
+                <div class="scan-overlay" id="scanOverlay">
+                    <div>
+                        <i class="fas fa-camera" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                        <p>Posicione o QR Code na área de visualização</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="cancelScanBtn" class="btn btn-secondary">Cancelar</button>
         </div>
     </div>
 
     <script>
-        // Configuração do Gun
+        // Configuração robusta do Gun
         const gun = Gun({
             peers: ['https://gun-manhattan.herokuapp.com/gun'],
-            localStorage: true,
-            radisk: true
+            localStorage: false,
+            radisk: false
         });
 
-        // Estado da aplicação
+        // Estado completo da aplicação
         const state = {
             currentUser: null,
-            contacts: {}
+            contacts: {},
+            qrScanner: null,
+            lastScannedQR: null,
+            testContacts: {
+                'user1': { id: 'user1', name: 'Amigo Exemplo', nickname: 'amigo' },
+                'user2': { id: 'user2', name: 'Outro Amigo', nickname: 'amigo2' }
+            }
         };
 
-        // Elementos do DOM
+        // Elementos do DOM com verificações
         const elements = {
             screens: {
                 login: document.getElementById('loginScreen'),
                 main: document.getElementById('mainScreen'),
                 qr: document.getElementById('qrScreen'),
-                addContact: document.getElementById('addContactScreen')
+                addContact: document.getElementById('addContactScreen'),
+                scan: document.getElementById('scanScreen')
             },
             inputs: {
                 username: document.getElementById('username'),
@@ -280,169 +337,402 @@
                 showQr: document.getElementById('showQrBtn'),
                 backToMainFromQr: document.getElementById('backToMainFromQr'),
                 backToMainFromAddContact: document.getElementById('backToMainFromAddContact'),
-                addContactById: document.getElementById('addContactByIdBtn')
+                scanQr: document.getElementById('scanQrBtn'),
+                cancelScan: document.getElementById('cancelScanBtn'),
+                addContactById: document.getElementById('addContactByIdBtn'),
+                backToAddContactFromScan: document.getElementById('backToAddContactFromScan')
             }
         };
 
-        // Funções auxiliares
+        // Verificação de elementos críticos
+        function verifyElements() {
+            let allElementsFound = true;
+            Object.entries(elements).forEach(([group, items]) => {
+                Object.entries(items).forEach(([key, element]) => {
+                    if (!element) {
+                        console.error(`Elemento não encontrado: ${group}.${key}`);
+                        allElementsFound = false;
+                    }
+                });
+            });
+            return allElementsFound;
+        }
+
+        // Funções auxiliares robustas
         function generateUserId() {
-            return 'user_' + Math.random().toString(36).substr(2, 9);
+            return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
         }
 
         function generateAvatarIcon(name) {
-            if (!name) return '?';
-            const names = name.split(' ');
-            if (names.length === 1) return names[0][0].toUpperCase();
-            return `${names[0][0]}${names[names.length-1][0]}`.toUpperCase();
+            try {
+                if (!name) return '?';
+                const names = name.split(' ');
+                return names.length === 1 
+                    ? names[0][0].toUpperCase() 
+                    : `${names[0][0]}${names[names.length-1][0]}`.toUpperCase();
+            } catch {
+                return '?';
+            }
         }
 
         function showScreen(screenName) {
-            Object.values(elements.screens).forEach(screen => {
-                screen.classList.remove('active');
-            });
-            elements.screens[screenName].classList.add('active');
+            try {
+                Object.values(elements.screens).forEach(screen => {
+                    if (screen) screen.classList.remove('active');
+                });
+                
+                const screen = elements.screens[screenName];
+                if (screen) {
+                    screen.classList.add('active');
+                } else {
+                    console.error(`Tela não encontrada: ${screenName}`);
+                    elements.screens.login.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Erro ao mudar de tela:', error);
+            }
         }
 
         function generateQrCode() {
-            if (!state.currentUser) return;
-            
-            const qrData = JSON.stringify({
-                userId: state.currentUser.id,
-                name: state.currentUser.name,
-                app: 'BunnyChat'
-            });
-            
-            QRCode.toCanvas(elements.displays.qrCode, qrData, {
-                width: 200,
-                margin: 2,
-                color: {
-                    dark: '#5A2A3E',
-                    light: '#FFF2F5'
+            try {
+                if (!state.currentUser) throw new Error("Nenhum usuário logado");
+                if (!elements.displays.qrCode) throw new Error("Elemento QR Code não encontrado");
+                
+                const qrData = JSON.stringify({
+                    app: "BunnyChat",
+                    version: 1,
+                    userId: state.currentUser.id,
+                    name: state.currentUser.name,
+                    timestamp: Date.now()
+                });
+                
+                QRCode.toCanvas(elements.displays.qrCode, qrData, {
+                    width: 200,
+                    margin: 2,
+                    color: { dark: '#5A2A3E', light: '#FFF2F5' }
+                }, (error) => {
+                    if (error) throw error;
+                });
+                
+                if (elements.inputs.userId) {
+                    elements.inputs.userId.value = state.currentUser.id;
                 }
-            }, (error) => {
-                if (error) console.error(error);
-            });
-            
-            elements.inputs.userId.value = state.currentUser.id;
+            } catch (error) {
+                console.error("Erro ao gerar QR Code:", error);
+                alert("Erro ao gerar QR Code");
+            }
+        }
+
+        // Funções do Scanner QR
+        function startQrScanner() {
+            try {
+                state.lastScannedQR = null;
+                
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("API de câmera não suportada");
+                }
+                
+                const video = document.getElementById('qrVideo');
+                if (!video) throw new Error("Elemento de vídeo não encontrado");
+                
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                }).then(function(stream) {
+                    video.srcObject = stream;
+                    video.setAttribute('playsinline', true);
+                    
+                    video.onplaying = () => {
+                        const overlay = document.getElementById('scanOverlay');
+                        if (overlay) overlay.style.display = 'none';
+                    };
+                    
+                    const scanFrame = () => {
+                        if (!document.getElementById('scanScreen').classList.contains('active')) {
+                            return;
+                        }
+                        
+                        try {
+                            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = video.videoWidth;
+                                canvas.height = video.videoHeight;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                
+                                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                                    inversionAttempts: 'dontInvert'
+                                });
+                                
+                                if (code) {
+                                    try {
+                                        const qrData = JSON.parse(code.data);
+                                        if (qrData.app === "BunnyChat" && qrData.userId) {
+                                            if (state.lastScannedQR === qrData.userId) return;
+                                            state.lastScannedQR = qrData.userId;
+                                            
+                                            if (state.currentUser && qrData.userId === state.currentUser.id) {
+                                                alert("Você não pode adicionar a si mesmo!");
+                                                return;
+                                            }
+                                            
+                                            stopQrScanner();
+                                            addContactFromQR(qrData.userId, qrData.name);
+                                        }
+                                    } catch (e) {
+                                        console.error("Erro ao processar QR Code:", e);
+                                    }
+                                }
+                            }
+                            requestAnimationFrame(scanFrame);
+                        } catch (error) {
+                            console.error("Erro no scanner:", error);
+                            stopQrScanner();
+                        }
+                    };
+                    
+                    requestAnimationFrame(scanFrame);
+                }).catch(function(err) {
+                    console.error("Erro ao acessar câmera:", err);
+                    const overlay = document.getElementById('scanOverlay');
+                    if (overlay) {
+                        overlay.innerHTML = `
+                            <div>
+                                <i class="fas fa-camera-slash"></i>
+                                <p>Não foi possível acessar a câmera</p>
+                                <button id="tryAgainBtn" class="btn">Tentar novamente</button>
+                            </div>
+                        `;
+                        document.getElementById('tryAgainBtn').addEventListener('click', startQrScanner);
+                    }
+                });
+            } catch (error) {
+                console.error("Erro ao iniciar scanner:", error);
+                alert("Erro ao iniciar a câmera");
+            }
+        }
+
+        function stopQrScanner() {
+            try {
+                const video = document.getElementById('qrVideo');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+                
+                const overlay = document.getElementById('scanOverlay');
+                if (overlay) overlay.style.display = 'flex';
+            } catch (error) {
+                console.error("Erro ao parar scanner:", error);
+            }
+        }
+
+        function addContactFromQR(userId, name) {
+            try {
+                if (!userId) throw new Error("ID do contato inválido");
+                
+                if (state.contacts[userId]) {
+                    alert(`${name || 'Este contato'} já está na sua lista!`);
+                    return;
+                }
+                
+                const newContact = {
+                    id: userId,
+                    name: name || "Novo Contato",
+                    nickname: name ? name.toLowerCase().replace(/\s/g, '') : "novocontato",
+                    addedAt: Date.now()
+                };
+                
+                state.contacts[userId] = newContact;
+                
+                if (state.currentUser) {
+                    gun.get('users').get(state.currentUser.id).get('contacts').get(userId).put(newContact);
+                }
+                
+                renderContacts();
+                showScreen('main');
+                alert(`Contato ${name || ''} adicionado com sucesso!`);
+            } catch (error) {
+                console.error("Erro ao adicionar contato:", error);
+                alert("Erro ao adicionar contato");
+            }
         }
 
         // Funções principais
         function login() {
-            const name = elements.inputs.username.value.trim();
-            const nickname = elements.inputs.nickname.value.trim() || name;
-            
-            if (!name) return;
-            
-            const userId = generateUserId();
-            state.currentUser = {
-                id: userId,
-                name: name,
-                nickname: nickname
-            };
-            
-            // Atualizar exibição
-            elements.displays.profileName.textContent = name;
-            elements.displays.profileNickname.textContent = `@${nickname}`;
-            elements.displays.userAvatar.textContent = generateAvatarIcon(name);
-            
-            showScreen('main');
+            try {
+                const name = elements.inputs.username.value.trim();
+                const nickname = elements.inputs.nickname.value.trim() || name;
+                
+                if (!name) {
+                    alert("Por favor, digite seu nome");
+                    return;
+                }
+                
+                const userId = generateUserId();
+                state.currentUser = {
+                    id: userId,
+                    name: name,
+                    nickname: nickname
+                };
+                
+                // Atualizar exibição
+                if (elements.displays.profileName) elements.displays.profileName.textContent = name;
+                if (elements.displays.profileNickname) elements.displays.profileNickname.textContent = `@${nickname}`;
+                if (elements.displays.userAvatar) elements.displays.userAvatar.textContent = generateAvatarIcon(name);
+                
+                // Carregar contatos (inicialmente apenas de teste)
+                state.contacts = {...state.testContacts};
+                renderContacts();
+                
+                showScreen('main');
+            } catch (error) {
+                console.error("Erro no login:", error);
+                alert("Erro ao fazer login");
+            }
         }
 
         function logout() {
-            state.currentUser = null;
-            showScreen('login');
-        }
-
-        function loadContacts() {
-            if (!state.currentUser) return;
-            
-            elements.displays.contactsList.innerHTML = '<p>Carregando contatos...</p>';
-            
-            // Simulação de contatos
-            setTimeout(() => {
-                state.contacts = {
-                    'user_123': { name: 'Amigo 1', nickname: 'amigo1' },
-                    'user_456': { name: 'Amigo 2', nickname: 'amigo2' }
-                };
-                
-                renderContacts();
-            }, 500);
+            try {
+                state.currentUser = null;
+                showScreen('login');
+            } catch (error) {
+                console.error("Erro no logout:", error);
+            }
         }
 
         function renderContacts() {
-            elements.displays.contactsList.innerHTML = '';
-            
-            Object.entries(state.contacts).forEach(([id, contact]) => {
-                const contactElement = document.createElement('div');
-                contactElement.className = 'contact-item';
-                contactElement.innerHTML = `
-                    <div class="avatar">${generateAvatarIcon(contact.name)}</div>
-                    <div class="contact-info">
-                        <div class="contact-name">${contact.name}</div>
-                        <div class="contact-nickname">@${contact.nickname}</div>
-                    </div>
-                    <div class="contact-actions">
-                        <button class="message-btn" data-contact-id="${id}">
+            try {
+                const contactsList = elements.displays.contactsList;
+                if (!contactsList) throw new Error("Elemento de lista de contatos não encontrado");
+                
+                contactsList.innerHTML = '';
+                
+                if (Object.keys(state.contacts).length === 0) {
+                    contactsList.innerHTML = '<p style="text-align: center;">Nenhum contato encontrado</p>';
+                    return;
+                }
+                
+                Object.entries(state.contacts).forEach(([id, contact]) => {
+                    const contactElement = document.createElement('div');
+                    contactElement.className = 'contact-item';
+                    contactElement.innerHTML = `
+                        <div class="avatar">${generateAvatarIcon(contact.name)}</div>
+                        <div class="contact-info">
+                            <div class="contact-name">${contact.name}</div>
+                            <div class="contact-nickname">@${contact.nickname || contact.name.toLowerCase()}</div>
+                        </div>
+                        <button class="message-btn" style="background: none; border: none; color: var(--accent); font-size: 20px;">
                             <i class="fas fa-comment"></i>
                         </button>
-                    </div>
-                `;
+                    `;
+                    
+                    contactsList.appendChild(contactElement);
+                });
+            } catch (error) {
+                console.error("Erro ao renderizar contatos:", error);
+            }
+        }
+
+        function addContactById() {
+            try {
+                const contactId = elements.inputs.contactId.value.trim();
+                if (!contactId) {
+                    alert("Por favor, digite o ID do contato");
+                    return;
+                }
                 
-                elements.displays.contactsList.appendChild(contactElement);
-            });
+                // Simulação - adiciona um contato de teste
+                const newContact = {
+                    id: contactId,
+                    name: "Novo Contato",
+                    nickname: "novocontato",
+                    addedAt: Date.now()
+                };
+                
+                state.contacts[contactId] = newContact;
+                
+                if (state.currentUser) {
+                    gun.get('users').get(state.currentUser.id).get('contacts').get(contactId).put(newContact);
+                }
+                
+                renderContacts();
+                showScreen('main');
+                elements.inputs.contactId.value = '';
+            } catch (error) {
+                console.error("Erro ao adicionar contato:", error);
+                alert("Erro ao adicionar contato");
+            }
         }
 
-        function addContact() {
-            const contactId = elements.inputs.contactId.value.trim();
-            if (!contactId) return;
-            
-            // Simulação de adição de contato
-            state.contacts[contactId] = { 
-                name: 'Novo Amigo', 
-                nickname: 'novoamigo' 
-            };
-            
-            renderContacts();
-            showScreen('main');
-        }
-
-        // Event Listeners
+        // Configuração dos event listeners
         function setupEventListeners() {
-            // Login
-            elements.buttons.login.addEventListener('click', login);
-            elements.inputs.username.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') login();
-            });
-            
-            // Logout
-            elements.buttons.logout.addEventListener('click', logout);
-            
-            // Navegação
-            elements.buttons.showQr.addEventListener('click', () => {
-                generateQrCode();
-                showScreen('qr');
-            });
-            
-            elements.buttons.backToMainFromQr.addEventListener('click', () => {
-                showScreen('main');
-            });
-            
-            elements.buttons.addContact.addEventListener('click', () => {
-                showScreen('addContact');
-            });
-            
-            elements.buttons.backToMainFromAddContact.addEventListener('click', () => {
-                showScreen('main');
-            });
-            
-            elements.buttons.addContactById.addEventListener('click', addContact);
-            elements.inputs.contactId.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addContact();
-            });
+            try {
+                // Verificar se todos os elementos existem
+                if (!verifyElements()) {
+                    throw new Error("Elementos críticos não encontrados");
+                }
+                
+                // Login
+                elements.buttons.login.addEventListener('click', login);
+                elements.inputs.username.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') login();
+                });
+                
+                // Logout
+                elements.buttons.logout.addEventListener('click', logout);
+                
+                // Navegação
+                elements.buttons.addContact.addEventListener('click', () => showScreen('addContact'));
+                elements.buttons.showQr.addEventListener('click', () => {
+                    generateQrCode();
+                    showScreen('qr');
+                });
+                elements.buttons.backToMainFromQr.addEventListener('click', () => showScreen('main'));
+                elements.buttons.backToMainFromAddContact.addEventListener('click', () => showScreen('main'));
+                
+                // Scanner QR
+                elements.buttons.scanQr.addEventListener('click', () => {
+                    showScreen('scan');
+                    startQrScanner();
+                });
+                elements.buttons.cancelScan.addEventListener('click', () => {
+                    stopQrScanner();
+                    showScreen('addContact');
+                });
+                elements.buttons.backToAddContactFromScan.addEventListener('click', () => {
+                    stopQrScanner();
+                    showScreen('addContact');
+                });
+                
+                // Adicionar contato por ID
+                elements.buttons.addContactById.addEventListener('click', addContactById);
+                elements.inputs.contactId.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') addContactById();
+                });
+                
+                // Garantir que a tela de login está visível no início
+                showScreen('login');
+            } catch (error) {
+                console.error("Erro na configuração:", error);
+                alert("Erro ao iniciar a aplicação");
+            }
         }
 
         // Inicialização
-        setupEventListeners();
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                setupEventListeners();
+                console.log("BunnyChat inicializado com sucesso!");
+            } catch (error) {
+                console.error("Erro na inicialização:", error);
+                alert("Erro crítico ao iniciar a aplicação");
+            }
+        });
     </script>
 </body>
 </html>
