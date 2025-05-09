@@ -3,122 +3,446 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BunnyChat</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <header>
-        <h1><i class="fas fa-paw"></i> BunnyChat</h1>
-    </header>
-    
-    <div class="container">
-        <!-- Tela de autenticação -->
-        <div id="authScreen" class="screen active">
-            <div class="auth-options">
-                <button id="newUserBtn" class="btn big-btn">
-                    <i class="fas fa-user-plus"></i> Novo Usuário
-                </button>
-                <button id="existingUserBtn" class="btn big-btn">
-                    <i class="fas fa-user-check"></i> Usuário Existente
-                </button>
-            </div>
-        </div>
-
-        <!-- Tela principal -->
-        <div id="mainScreen" class="screen">
-            <div id="contactsSection" class="section hidden">
-                <h2><i class="fas fa-users"></i> Contatos</h2>
-                <div id="contactsList" class="contacts-list"></div>
-            </div>
-
-            <div id="qrSection" class="section hidden">
-                <h2><i class="fas fa-qrcode"></i> Meu QR Code</h2>
-                <div class="user-info">
-                    <p><strong>Nome:</strong> <span id="userNameDisplay"></span></p>
-                    <p><strong>ID:</strong> <span id="userIdDisplay"></span></p>
-                </div>
-                <canvas id="qrCodeCanvas"></canvas>
-                <button id="copyIdBtn" class="btn">
-                    <i class="fas fa-copy"></i> Copiar ID
-                </button>
-            </div>
-
-            <div id="scanSection" class="section hidden">
-                <h2><i class="fas fa-camera"></i> Escanear QR</h2>
-                <div class="scanner-container">
-                    <video id="qrVideo"></video>
-                    <div class="scan-overlay">
-                        <i class="fas fa-qrcode"></i>
-                        <p>Posicione o QR Code na área</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tela de chat -->
-        <div id="chatScreen" class="screen">
-            <div class="chat-header">
-                <button id="backToMainBtn" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="chat-contact">
-                    <div class="avatar" id="chatAvatar"></div>
-                    <span id="chatContactName"></span>
-                </div>
-                <button id="callBtn" class="call-btn">
-                    <i class="fas fa-phone"></i>
-                </button>
-            </div>
-            
-            <div id="chatMessages" class="chat-messages"></div>
-            
-            <div class="message-input">
-                <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
-                <button id="sendMessageBtn" class="send-btn">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Botões flutuantes -->
-    <div class="float-buttons">
-        <button id="floatContactsBtn" class="float-btn" title="Contatos">
-            <i class="fas fa-users"></i>
-        </button>
-        <button id="floatQRBtn" class="float-btn" title="Meu QR Code">
-            <i class="fas fa-qrcode"></i>
-        </button>
-        <button id="floatScanBtn" class="float-btn" title="Escanear QR">
-            <i class="fas fa-camera"></i>
-        </button>
-    </div>
-
-    <!-- Tela de chamada -->
-    <div id="callScreen" class="call-screen hidden">
-        <div class="call-info">
-            <h2 id="callContactName"></h2>
-            <p id="callStatus">Conectando...</p>
-        </div>
-        <video id="remoteVideo" autoplay playsinline></video>
-        <video id="localVideo" autoplay playsinline muted></video>
-        <div class="call-controls">
-            <button id="endCallBtn" class="call-btn end-call">
-                <i class="fas fa-phone-slash"></i>
-            </button>
-            <button id="toggleMuteBtn" class="call-btn">
-                <i class="fas fa-microphone"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- Scripts -->
+    <title>BunnyChat - Mensagens Fofinhas</title>
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script src="js/app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Short+Stack&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #FF9BB3;
+            --secondary: #FFD6E0;
+            --accent: #FF6B8B;
+            --light: #FFF2F5;
+            --dark: #5A2A3E;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Short Stack', 'Comic Neue', cursive;
+            background-color: var(--light);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 20px;
+        }
+
+        .screen {
+            display: none;
+            background-color: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1, h2 {
+            color: var(--accent);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 20px;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-block;
+            margin: 10px 5px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: var(--dark);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--secondary);
+            border-radius: 50px;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-right: 15px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+            cursor: pointer;
+        }
+
+        .contact-info {
+            flex-grow: 1;
+        }
+
+        .contact-name {
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .contact-actions button {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1rem;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .back-button {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            .screen {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tela de Login -->
+        <div id="loginScreen" class="screen active">
+            <div class="logo">
+                <i class="fas fa-heart"></i>
+                <h1>BunnyChat</h1>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Seu nome">
+                <input type="text" id="nickname" placeholder="Seu apelido">
+            </div>
+            
+            <button id="loginBtn" class="btn">Entrar</button>
+        </div>
+
+        <!-- Tela Principal -->
+        <div id="mainScreen" class="screen">
+            <div class="profile-header">
+                <div class="avatar" id="userAvatar"></div>
+                <div>
+                    <div id="profileName"></div>
+                    <div id="profileNickname"></div>
+                </div>
+                <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+            </div>
+            
+            <h2>Contatos</h2>
+            <div id="contactsList"></div>
+            
+            <button id="addContactBtn" class="btn"><i class="fas fa-plus"></i> Adicionar Contato</button>
+            <button id="showQrBtn" class="btn btn-secondary"><i class="fas fa-qrcode"></i> Meu QR Code</button>
+        </div>
+
+        <!-- Tela de QR Code -->
+        <div id="qrScreen" class="screen">
+            <button class="back-button" id="backToMainFromQr"><i class="fas fa-arrow-left"></i></button>
+            <div class="logo">
+                <i class="fas fa-qrcode"></i>
+                <h1>Meu QR Code</h1>
+            </div>
+            
+            <div style="display: flex; justify-content: center; margin: 20px 0;">
+                <canvas id="qrCodeCanvas"></canvas>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="userIdDisplay" readonly>
+            </div>
+        </div>
+
+        <!-- Tela de Adicionar Contato -->
+        <div id="addContactScreen" class="screen">
+            <button class="back-button" id="backToMainFromAddContact"><i class="fas fa-arrow-left"></i></button>
+            <div class="logo">
+                <i class="fas fa-user-plus"></i>
+                <h1>Adicionar Contato</h1>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="contactId" placeholder="Cole o ID do contato aqui">
+                <button id="addContactByIdBtn" class="btn">Adicionar por ID</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Gun
+        const gun = Gun({
+            peers: ['https://gun-manhattan.herokuapp.com/gun'],
+            localStorage: true,
+            radisk: true
+        });
+
+        // Estado da aplicação
+        const state = {
+            currentUser: null,
+            contacts: {}
+        };
+
+        // Elementos do DOM
+        const elements = {
+            screens: {
+                login: document.getElementById('loginScreen'),
+                main: document.getElementById('mainScreen'),
+                qr: document.getElementById('qrScreen'),
+                addContact: document.getElementById('addContactScreen')
+            },
+            inputs: {
+                username: document.getElementById('username'),
+                nickname: document.getElementById('nickname'),
+                contactId: document.getElementById('contactId'),
+                userId: document.getElementById('userIdDisplay')
+            },
+            displays: {
+                profileName: document.getElementById('profileName'),
+                profileNickname: document.getElementById('profileNickname'),
+                userAvatar: document.getElementById('userAvatar'),
+                contactsList: document.getElementById('contactsList'),
+                qrCode: document.getElementById('qrCodeCanvas')
+            },
+            buttons: {
+                login: document.getElementById('loginBtn'),
+                logout: document.getElementById('logoutBtn'),
+                addContact: document.getElementById('addContactBtn'),
+                showQr: document.getElementById('showQrBtn'),
+                backToMainFromQr: document.getElementById('backToMainFromQr'),
+                backToMainFromAddContact: document.getElementById('backToMainFromAddContact'),
+                addContactById: document.getElementById('addContactByIdBtn')
+            }
+        };
+
+        // Funções auxiliares
+        function generateUserId() {
+            return 'user_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function generateAvatarIcon(name) {
+            if (!name) return '?';
+            const names = name.split(' ');
+            if (names.length === 1) return names[0][0].toUpperCase();
+            return `${names[0][0]}${names[names.length-1][0]}`.toUpperCase();
+        }
+
+        function showScreen(screenName) {
+            Object.values(elements.screens).forEach(screen => {
+                screen.classList.remove('active');
+            });
+            elements.screens[screenName].classList.add('active');
+        }
+
+        function generateQrCode() {
+            if (!state.currentUser) return;
+            
+            const qrData = JSON.stringify({
+                userId: state.currentUser.id,
+                name: state.currentUser.name,
+                app: 'BunnyChat'
+            });
+            
+            QRCode.toCanvas(elements.displays.qrCode, qrData, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#5A2A3E',
+                    light: '#FFF2F5'
+                }
+            }, (error) => {
+                if (error) console.error(error);
+            });
+            
+            elements.inputs.userId.value = state.currentUser.id;
+        }
+
+        // Funções principais
+        function login() {
+            const name = elements.inputs.username.value.trim();
+            const nickname = elements.inputs.nickname.value.trim() || name;
+            
+            if (!name) return;
+            
+            const userId = generateUserId();
+            state.currentUser = {
+                id: userId,
+                name: name,
+                nickname: nickname
+            };
+            
+            // Atualizar exibição
+            elements.displays.profileName.textContent = name;
+            elements.displays.profileNickname.textContent = `@${nickname}`;
+            elements.displays.userAvatar.textContent = generateAvatarIcon(name);
+            
+            showScreen('main');
+        }
+
+        function logout() {
+            state.currentUser = null;
+            showScreen('login');
+        }
+
+        function loadContacts() {
+            if (!state.currentUser) return;
+            
+            elements.displays.contactsList.innerHTML = '<p>Carregando contatos...</p>';
+            
+            // Simulação de contatos
+            setTimeout(() => {
+                state.contacts = {
+                    'user_123': { name: 'Amigo 1', nickname: 'amigo1' },
+                    'user_456': { name: 'Amigo 2', nickname: 'amigo2' }
+                };
+                
+                renderContacts();
+            }, 500);
+        }
+
+        function renderContacts() {
+            elements.displays.contactsList.innerHTML = '';
+            
+            Object.entries(state.contacts).forEach(([id, contact]) => {
+                const contactElement = document.createElement('div');
+                contactElement.className = 'contact-item';
+                contactElement.innerHTML = `
+                    <div class="avatar">${generateAvatarIcon(contact.name)}</div>
+                    <div class="contact-info">
+                        <div class="contact-name">${contact.name}</div>
+                        <div class="contact-nickname">@${contact.nickname}</div>
+                    </div>
+                    <div class="contact-actions">
+                        <button class="message-btn" data-contact-id="${id}">
+                            <i class="fas fa-comment"></i>
+                        </button>
+                    </div>
+                `;
+                
+                elements.displays.contactsList.appendChild(contactElement);
+            });
+        }
+
+        function addContact() {
+            const contactId = elements.inputs.contactId.value.trim();
+            if (!contactId) return;
+            
+            // Simulação de adição de contato
+            state.contacts[contactId] = { 
+                name: 'Novo Amigo', 
+                nickname: 'novoamigo' 
+            };
+            
+            renderContacts();
+            showScreen('main');
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Login
+            elements.buttons.login.addEventListener('click', login);
+            elements.inputs.username.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+            
+            // Logout
+            elements.buttons.logout.addEventListener('click', logout);
+            
+            // Navegação
+            elements.buttons.showQr.addEventListener('click', () => {
+                generateQrCode();
+                showScreen('qr');
+            });
+            
+            elements.buttons.backToMainFromQr.addEventListener('click', () => {
+                showScreen('main');
+            });
+            
+            elements.buttons.addContact.addEventListener('click', () => {
+                showScreen('addContact');
+            });
+            
+            elements.buttons.backToMainFromAddContact.addEventListener('click', () => {
+                showScreen('main');
+            });
+            
+            elements.buttons.addContactById.addEventListener('click', addContact);
+            elements.inputs.contactId.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addContact();
+            });
+        }
+
+        // Inicialização
+        setupEventListeners();
+    </script>
 </body>
 </html>
